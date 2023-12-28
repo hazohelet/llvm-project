@@ -18,6 +18,7 @@ include "llvm/Target/Target.td"
 //===----------------------------------------------------------------------===//
 
 include "CPUXRegisterInfo.td"
+include "CPUXSchedule.td"
 include "CPUXInstrInfo.td"
 
 def CPUXInstrInfo : InstrInfo;

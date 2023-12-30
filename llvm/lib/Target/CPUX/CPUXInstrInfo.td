@@ -8,6 +8,16 @@ def simm20u: Operand<i32>, ImmLeaf<i32,
 def simm32: Operand<i32>, ImmLeaf<i32, [{return isInt<32>(Imm);}]>;
 
 
+def LO12sext : SDNodeXForm<imm, [{
+  return CurDAG->getTargetConstant(SignExtend64<12>(N->getZExtValue()),
+    SDLoc(N), N->getValueType(0));
+  }]>;
+
+def HI20 : SDNodeXForm<imm, [{
+  return getImm(N, ((N->getZExtValue() + 0x800) >> 12) & 0xfffff);
+  }]>;
+
+
 // shamt field must fit in 5 bits.
 def immZExt_Xlen : Operand<i32>, ImmLeaf<i32, [{
   return isUInt<5>(Imm);
@@ -61,3 +71,9 @@ def ADDI: ArithLogicI<0b0010011, 0b000, "addi", add, simm12, GPR>;
 
 def LUI: ArithLogicU<0b0110111, "lui", GPR, simm20u>;
 def ADD: ArithLogicR<0b0110011, 0b000, 0b0000000, "add", add, GPR>;
+
+
+def : Pat<(simm12:$in), (ADDI ZERO, simm12:$in)>;
+def : Pat<(simm20u:$in), (LUI (HI20 imm:$in))>;
+def : Pat<(simm32:$imm), (ADDI (LUI (HI20 imm:$imm)), (LO12sext imm:$imm))>;
+

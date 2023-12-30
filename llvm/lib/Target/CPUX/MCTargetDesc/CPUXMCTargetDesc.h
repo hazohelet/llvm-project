@@ -4,10 +4,29 @@
 #include "llvm/Support/DataTypes.h"
 
 namespace llvm {
-  class Target;
-  class Triple;
+class MCAsmBackend;
+class MCCodeEmitter;
+class MCContext;
+class MCInstrInfo;
+class MCObjectTargetWriter;
+class MCRegisterInfo;
+class MCSubtargetInfo;
+class StringRef;
+class Target;
+class Triple;
+class raw_ostream;
+class raw_pwrite_stream;
 
-  extern Target TheCPUXTarget;
-}
+Target &getTheCPUXTarget();
+
+} // namespace llvm
+#define GET_REGINFO_ENUM
+#include "CPUXGenRegisterInfo.inc"
+
+#define GET_INSTRINFO_ENUM
+#include "CPUXGenInstrInfo.inc"
+
+#define GET_SUBTARGETINFO_ENUM
+#include "CPUXGenSubtargetInfo.inc"
 
 #endif

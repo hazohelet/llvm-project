@@ -8,10 +8,12 @@
 
 
 //===----------------------------------------------------------------------===//
-// This is the top level entry point for the MYRISCVX target.
+// This is the top level entry point for the CPUX target.
 //===----------------------------------------------------------------------===//
 
 include "llvm/Target/Target.td"
+
+def : ProcessorModel<"cpux-rv32", NoSchedModel, []>;
 
 //===----------------------------------------------------------------------===//
 // Target-dependent interfaces
@@ -20,6 +22,7 @@ include "llvm/Target/Target.td"
 include "CPUXRegisterInfo.td"
 include "CPUXSchedule.td"
 include "CPUXInstrInfo.td"
+include "CPUXCallingConv.td"
 
 def CPUXInstrInfo : InstrInfo;
 

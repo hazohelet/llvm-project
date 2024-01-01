@@ -37,7 +37,7 @@ MCOperand CPUXMCInstLower::LowerOperand(const MachineOperand &MO,
 }
 
 void CPUXMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
-  OutMI.setOpcode(MI->getNumOperands());
+  OutMI.setOpcode(MI->getOpcode());
   for (unsigned i = 0, e = MI->getNumOperands(); i != e; ++i) {
     const MachineOperand &MO = MI->getOperand(i);
     MCOperand MCOp = LowerOperand(MO, 0);

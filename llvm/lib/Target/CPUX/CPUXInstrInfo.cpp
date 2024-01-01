@@ -22,3 +22,25 @@ unsigned CPUXInstrInfo::GetInstSizeInBytes(const MachineInstr &MI) const {
     return MI.getDesc().getSize();
   }
 }
+
+bool CPUXInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
+  MachineBasicBlock &MBB = *MI.getParent();
+
+  switch (MI.getDesc().getOpcode()) {
+  default:
+    return false;
+  case CPUX::RetRA:
+    expandRetRA(MBB, MI);
+    break;
+  }
+  MBB.erase(MI);
+  return true;
+}
+
+void CPUXInstrInfo::expandRetRA(MachineBasicBlock &MBB,
+                                MachineBasicBlock::iterator I) const {
+  BuildMI(MBB, I, I->getDebugLoc(), get(CPUX::JALR))
+      .addReg(CPUX::ZERO)
+      .addReg(CPUX::RA)
+      .addImm(0);
+}

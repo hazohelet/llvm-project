@@ -29,6 +29,9 @@ add_llvm_target(CPUXCodeGen
   CPUXSubtarget.cpp
   CPUXTargetMachine.cpp
   CPUXTargetObjectFile.cpp
+
+  ADD_TO_COMPONENT
+  CPUX
   )
 
 add_subdirectory(MCTargetDesc)

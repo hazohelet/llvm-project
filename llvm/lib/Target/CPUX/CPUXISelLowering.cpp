@@ -76,6 +76,6 @@ CPUXTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                 const SmallVectorImpl<ISD::OutputArg> &Outs,
                                 const SmallVectorImpl<SDValue> &OutVals,
                                 const SDLoc &DL, SelectionDAG &DAG) const {
-  // TODO: Implement this
-  return Chain;
+  return DAG.getNode(CPUXISD::Ret, DL, MVT::Other, Chain,
+                     DAG.getRegister(CPUX::RA, MVT::i32));
 }

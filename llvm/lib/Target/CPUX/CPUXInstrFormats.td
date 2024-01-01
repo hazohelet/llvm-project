@@ -128,3 +128,9 @@ class CPUX_J<bits<7> opcode, dag outs, dag ins, string asmstr,
   let Inst{11-7}  = rd;
   let Inst{6-0}   = opcode;
 }
+
+class CPUXPseudo<dag outs, dag ins, string asmstr, list<dag> pattern>:
+  CPUXInst<outs, ins, asmstr, pattern, IIPseudo, Pseudo> {
+  let isCodeGenOnly = 1;
+  let isPseudo = 1;
+}

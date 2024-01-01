@@ -1,3 +1,6 @@
+def CPUXRet : SDNode<"CPUXISD::Ret", SDTNone,
+  [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
 include "CPUXInstrFormats.td"
 
 // Lower 12 bits
@@ -60,6 +63,13 @@ class ArithLogicI<bits<7> opcode, bits<3> funct3,
       let isReMaterializable = 1;
 }
 
+// Jlalr does not use OpNode
+class ArithLogicI_J<bits<7> opcode, bits<3> funct3,
+                    string instr_asm, Operand Od, RegisterClass RC> :
+  CPUX_I<opcode, funct3, (outs RC:$rd), (ins RC:$rs1, Od:$simm12),
+  !strconcat(instr_asm, "  $rd, $rs1, $simm12"), [], IIAlu> {
+  }
+
 class ArithLogicU<bits<7> opcode, string instr_asm,
   RegisterClass RC, Operand Od> :
   CPUX_U<opcode, (outs RC:$rd), (ins Od:$imm20),
@@ -67,10 +77,20 @@ class ArithLogicU<bits<7> opcode, string instr_asm,
       let isReMaterializable = 1;
 }
 
+def JALR : ArithLogicI_J<0b1100111, 0b000, "jalr", simm12, GPR>;
+
+def: InstAlias<"jr  $rs",     (JALR ZERO, GPR:$rs, 0)>;
+def: InstAlias<"jalr  $rs",   (JALR RA,   GPR:$rs, 0)>;
+def: InstAlias<"ret",         (JALR ZERO,      RA, 0), 2>;
+
+
 def ADDI: ArithLogicI<0b0010011, 0b000, "addi", add, simm12, GPR>;
 
 def LUI: ArithLogicU<0b0110111, "lui", GPR, simm20u>;
 def ADD: ArithLogicR<0b0110011, 0b000, 0b0000000, "add", add, GPR>;
+
+let isReturn=1, isTerminator=1, hasDelaySlot=0, isBarrier=1, hasCtrlDep=1 in
+  def RetRA : CPUXPseudo<(outs), (ins), "", [(CPUXRet)]>;
 
 
 def : Pat<(simm12:$in), (ADDI ZERO, simm12:$in)>;

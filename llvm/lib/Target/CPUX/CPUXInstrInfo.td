@@ -79,12 +79,12 @@ class ArithLogicU<bits<7> opcode, string instr_asm,
 
 def JALR : ArithLogicI_J<0b1100111, 0b000, "jalr", simm12, GPR>;
 
-def: InstAlias<"jr  $rs",     (JALR ZERO, GPR:$rs, 0)>;
-def: InstAlias<"jalr  $rs",   (JALR RA,   GPR:$rs, 0)>;
+def: InstAlias<"jr $rs",     (JALR ZERO, GPR:$rs, 0)>;
+def: InstAlias<"jalr $rs",   (JALR RA,   GPR:$rs, 0)>;
 def: InstAlias<"ret",         (JALR ZERO,      RA, 0), 2>;
 
-
 def ADDI: ArithLogicI<0b0010011, 0b000, "addi", add, simm12, GPR>;
+def: InstAlias<"li $rs, $imm", (ADDI GPR:$rs, ZERO, simm12:$imm)>;
 
 def LUI: ArithLogicU<0b0110111, "lui", GPR, simm20u>;
 def ADD: ArithLogicR<0b0110011, 0b000, 0b0000000, "add", add, GPR>;

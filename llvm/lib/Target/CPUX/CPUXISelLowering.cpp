@@ -76,6 +76,35 @@ CPUXTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                 const SmallVectorImpl<ISD::OutputArg> &Outs,
                                 const SmallVectorImpl<SDValue> &OutVals,
                                 const SDLoc &DL, SelectionDAG &DAG) const {
-  return DAG.getNode(CPUXISD::Ret, DL, MVT::Other, Chain,
-                     DAG.getRegister(CPUX::RA, MVT::i32));
+  SmallVector<CCValAssign, 16> RVLocs;
+  MachineFunction &MF = DAG.getMachineFunction();
+
+  CCState CCInfo(CallConv, IsVarArg, MF, RVLocs, *DAG.getContext());
+  CCInfo.AnalyzeReturn(Outs, RetCC_CPUX);
+
+  SDValue Flag;
+  SmallVector<SDValue, 4> RetOps(1, Chain);
+
+  for (unsigned I = 0; I != RVLocs.size(); ++I) {
+    SDValue Val = OutVals[I];
+    CCValAssign &VA = RVLocs[I];
+    assert(VA.isRegLoc() && "Can only return in registers!");
+
+    if (RVLocs[I].getValVT() != RVLocs[I].getLocVT())
+      Val = DAG.getNode(ISD::BITCAST, DL, RVLocs[I].getLocVT(), Val);
+
+    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Flag);
+
+    Flag = Chain.getValue(1);
+
+    RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
+  }
+
+  RetOps[0] = Chain;
+
+  if (Flag.getNode()) {
+    RetOps.push_back(Flag);
+  }
+
+  return DAG.getNode(CPUXISD::Ret, DL, MVT::Other, RetOps);
 }

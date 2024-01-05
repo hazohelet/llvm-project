@@ -9,7 +9,7 @@ using namespace llvm;
 #include "CPUXGenAsmWriter.inc"
 
 void CPUXInstPrinter::printRegName(raw_ostream &OS, MCRegister Reg) const {
-  OS << getRegisterName(Reg);
+  OS << getRegisterName(Reg, CPUX::ABIRegAltName);
 }
 
 void CPUXInstPrinter::printInst(const MCInst *MI, uint64_t Address,

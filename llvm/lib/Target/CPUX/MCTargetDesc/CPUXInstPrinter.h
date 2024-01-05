@@ -13,7 +13,7 @@ public:
       : MCInstPrinter(MAI, MII, MRI) {}
 
   void printInstruction(const MCInst *MI, uint64_t Address, raw_ostream &O);
-  static const char *getRegisterName(MCRegister RegNo);
+  static const char *getRegisterName(MCRegister RegNo, unsigned AltIdx);
   std::pair<const char *, uint64_t> getMnemonic(const MCInst *MI) override;
 
   void printRegName(raw_ostream &OS, MCRegister Reg) const override;

@@ -8,7 +8,11 @@ let Namespace = "CPUX" in {
 
 class CPUXGPRReg<bits<5> Enc, string n, list<string> alt>
   : CPUXReg<Enc, n, alt>;
+
+def ABIRegAltName : RegAltNameIndex;
+
 let Namespace = "CPUX" in {
+let RegAltNameIndices = [ABIRegAltName] in {
   def ZERO: CPUXGPRReg<0, "x0", ["zero"]>, DwarfRegNum<[0]>;
   def RA  : CPUXGPRReg<1, "x1", ["ra"]>,        DwarfRegNum<[1]>;
   def SP  : CPUXGPRReg<2, "x2", ["sp"]>,        DwarfRegNum<[2]>;
@@ -43,6 +47,7 @@ let Namespace = "CPUX" in {
   def T4  : CPUXGPRReg<29, "x29", ["t4"]>,     DwarfRegNum<[29]>;
   def T5  : CPUXGPRReg<30, "x30", ["t5"]>,     DwarfRegNum<[30]>;
   def T6  : CPUXGPRReg<31, "x31", ["t6"]>,     DwarfRegNum<[31]>;
+}
 }
 
 def GPR: RegisterClass<"CPUX", [i32], 32, (add

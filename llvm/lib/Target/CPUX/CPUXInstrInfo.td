@@ -83,8 +83,33 @@ def: InstAlias<"jr $rs",     (JALR ZERO, GPR:$rs, 0)>;
 def: InstAlias<"jalr $rs",   (JALR RA,   GPR:$rs, 0)>;
 def: InstAlias<"ret",         (JALR ZERO,      RA, 0), 2>;
 
+let canFoldAsLoad = 1 in
+class LoadMemory<bits<7> opcode, bits<3> funct3, string instr_asm,
+  RegisterClass RC> :
+  CPUX_I<opcode, funct3, (outs RC:$rd), (ins GPR:$rs1, simm12:$simm12),
+    !strconcat(instr_asm, "  $rd, ${simm12}(${rs1})"),
+    [], IILoad>;
+
+class StoreMemory<bits<7> opcode, bits<3> funct3, string instr_asm,
+  RegisterClass RC> :
+  CPUX_S<opcode, funct3, (outs), (ins RC:$rs2, GPR:$rs1, simm12:$simm12),
+    !strconcat(instr_asm, "  $rs2, ${simm12}(${rs1})"),
+    [], IIStore>;
+
+class AlignedLoad<PatFrag Node> :
+  PatFrag<(ops node:$ptr), (Node node:$ptr), [{
+  LoadSDNode *LD = cast<LoadSDNode>(N);
+  return LD->getMmoeryVT().getSizeInBits() / 8 <= LD->getAlignment();
+}]>;
+
+class AlignedStore<PatFrag Node> :
+  PatFrag<(ops node:$val, node:$ptr), (Node node:$val, node:$ptr), [{
+  StoreSDNode *ST = cast<StoreSDNode>(N);
+  return SD->getMemoryVT().getSizeInBits() / 8 <= ST->getAlignment();
+}]>;
+
 def ADDI: ArithLogicI<0b0010011, 0b000, "addi", add, simm12, GPR>;
-def: InstAlias<"li $rs, $imm", (ADDI GPR:$rs, ZERO, simm12:$imm)>;
+def: InstAlias<"li  $rs, $imm", (ADDI GPR:$rs, ZERO, simm12:$imm)>;
 
 def LUI: ArithLogicU<0b0110111, "lui", GPR, simm20u>;
 def ADD: ArithLogicR<0b0110011, 0b000, 0b0000000, "add", add, GPR>;
@@ -92,6 +117,47 @@ def ADD: ArithLogicR<0b0110011, 0b000, 0b0000000, "add", add, GPR>;
 let isReturn=1, isTerminator=1, hasDelaySlot=0, isBarrier=1, hasCtrlDep=1 in
   def RetRA : CPUXPseudo<(outs), (ins), "", [(CPUXRet)]>;
 
+def load_a          : AlignedLoad<load>;
+def sextloadi8_a    : AlignedLoad<sextloadi8>;
+def zextloadi8_a    : AlignedLoad<zextloadi8>;
+def sextloadi32_a   : AlignedLoad<sextloadi32>;
+
+def store_a        : AlignedStore<store>;
+def trucstorei32_a : AlignedStore<truncstorei32>;
+
+def LW   : LoadMemory <0b0000011, 0b010, "lw", GPR>;
+def SW   : StoreMemory<0b0100011, 0b010, "sw", GPR>;
+
+def : Pat<(add (i32 addr_fi:$rs1), simm12:$simm12),
+          (ADDI (i32 addr_fi:$rs1), simm12:$simm12)>;
+
+multiclass LoadPattern<PatFrag LoadOp, CPUXInst Inst> {
+  def : Pat<(LoadOp simm12:$simm12)                    , (Inst ZERO, simm12:$simm12)>;
+  def : Pat<(LoadOp simm32:$imm)                       ,
+            (Inst (LUI (HI20 imm:$imm)), (LO12sext imm:$imm))>;
+  def : Pat<(LoadOp GPR:$rs1)                          , (Inst GPR:$rs1, 0)>;
+  def : Pat<(LoadOp addr_fi:$rs1)                      , (Inst addr_fi:$rs1, 0)>;
+  def : Pat<(LoadOp (add GPR:$rs1, simm12:$simm12))    , (Inst GPR:$rs1, simm12:$simm12)>;
+  def : Pat<(LoadOp (add addr_fi:$rs1, simm12:$simm12)), (Inst addr_fi:$rs1, simm12:$simm12)>;
+}
+
+multiclass StorePattern<PatFrag StoreOp, CPUXInst Inst, RegisterClass RC> {
+  def : Pat<(StoreOp RC:$rs2, simm12:$simm12)         , (Inst RC:$rs2, ZERO, simm12:$simm12)>;
+  def : Pat<(StoreOp RC:$rs2, simm32:$imm)         ,
+            (Inst RC:$rs2, (LUI (HI20 imm:$imm)), (LO12sext imm:$imm))>;
+  def : Pat<(StoreOp RC:$rs2, GPR:$rs1)               , (Inst RC:$rs2, GPR:$rs1, 0)>;
+  def : Pat<(StoreOp RC:$rs2, addr_fi:$rs1)           , (Inst RC:$rs2, addr_fi:$rs1, 0)>;
+  def : Pat<(StoreOp RC:$rs2, (add GPR:$rs1, simm12:$simm12)),
+    (Inst RC:$rs2, GPR:$rs1, simm12:$simm12)>;
+  def : Pat<(StoreOp RC:$rs2, (add addr_fi:$rs1, simm12:$simm12)),
+    (Inst RC:$rs2, addr_fi:$rs1, simm12:$simm12)>;
+}
+
+defm : LoadPattern<load, LW>;
+defm : LoadPattern<sextloadi8, LW>;
+defm : LoadPattern<extloadi8, LW>;
+defm : LoadPattern<zextloadi8, LW>;
+defm : StorePattern<store, SW, GPR>;
 
 def : Pat<(simm12:$in), (ADDI ZERO, simm12:$in)>;
 def : Pat<(simm20u:$in), (LUI (HI20 imm:$in))>;

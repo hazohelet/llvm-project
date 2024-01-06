@@ -16,10 +16,69 @@
 using namespace llvm;
 
 void CPUXFrameLowering::emitPrologue(MachineFunction &MF,
-                                     MachineBasicBlock &MBB) const {}
+                                     MachineBasicBlock &MBB) const {
+  assert(&MF.front() == &MBB && "Shrink-wrapping not yet supported");
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+
+  const CPUXInstrInfo &TII =
+      *static_cast<const CPUXInstrInfo *>(STI.getInstrInfo());
+
+  MachineBasicBlock::iterator MBBI = MBB.begin();
+  DebugLoc dl = MBBI != MBB.end() ? MBBI->getDebugLoc() : DebugLoc();
+  unsigned SP = CPUX::SP;
+
+  uint64_t StackSize = MFI.getStackSize();
+
+  if (StackSize == 0 && !MFI.adjustsStack())
+    return;
+
+  MachineModuleInfo &MMI = MF.getMMI();
+  const MCRegisterInfo *MRI = MMI.getContext().getRegisterInfo();
+
+  TII.adjustStackPtr(SP, -StackSize, MBB, MBBI);
+
+  unsigned CFIIndex = MF.addFrameInst(
+      MCCFIInstruction::cfiDefCfaOffset(/*L=*/nullptr, -StackSize));
+
+  BuildMI(MBB, MBBI, dl, TII.get(CPUX::CFI_INSTRUCTION)).addCFIIndex(CFIIndex);
+
+  const std::vector<CalleeSavedInfo> &CSI = MFI.getCalleeSavedInfo();
+
+  if (CSI.size() > 0) {
+    for (unsigned I = 0; I < CSI.size(); ++I)
+      ++MBBI;
+
+    for (auto &CS : CSI) {
+      int64_t Offset = MFI.getObjectOffset(CS.getFrameIdx());
+      unsigned Reg = CS.getReg();
+
+      unsigned CFIIndex = MF.addFrameInst(MCCFIInstruction::createOffset(
+          /*L=*/nullptr, MRI->getDwarfRegNum(Reg, /*isEH=*/true), Offset));
+      BuildMI(MBB, MBBI, dl, TII.get(TargetOpcode::CFI_INSTRUCTION))
+          .addCFIIndex(CFIIndex);
+    }
+  }
+}
 
 void CPUXFrameLowering::emitEpilogue(MachineFunction &MF,
-                                     MachineBasicBlock &MBB) const {}
+                                     MachineBasicBlock &MBB) const {
+  MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+
+  const CPUXInstrInfo &TII =
+      *static_cast<const CPUXInstrInfo *>(STI.getInstrInfo());
+
+  DebugLoc dl = MBBI->getDebugLoc();
+
+  unsigned SP = CPUX::SP;
+
+  uint64_t StackSize = MFI.getStackSize();
+
+  if (StackSize == 0)
+    return;
+
+  TII.adjustStackPtr(SP, StackSize, MBB, MBBI);
+}
 
 /// hasFP - Return true if the specified function should have a dedicated frame
 /// pointer register, especially in case of vararg functions (In our use case,

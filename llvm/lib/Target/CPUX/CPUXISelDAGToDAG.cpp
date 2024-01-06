@@ -41,6 +41,9 @@ bool CPUXDAGToDAGISel::SelectAddrFI(SDValue Addr, SDValue &Base) {
 
 void CPUXDAGToDAGISel::Select(SDNode *Node) {
   unsigned Opcode = Node->getOpcode();
+  MVT XLenVT = MVT::i32;
+  SDLoc DL(Node);
+  EVT VT = Node->getValueType(0);
 
   LLVM_DEBUG(errs() << "Selecting: "; Node->dump(CurDAG); errs() << "\n");
 
@@ -53,6 +56,13 @@ void CPUXDAGToDAGISel::Select(SDNode *Node) {
   switch (Opcode) {
   default:
     break;
+  case ISD::FrameIndex: {
+    SDValue Imm = CurDAG->getTargetConstant(0, DL, XLenVT);
+    int32_t FI = cast<FrameIndexSDNode>(Node)->getIndex();
+    SDValue TFI = CurDAG->getTargetFrameIndex(FI, XLenVT);
+    ReplaceNode(Node, CurDAG->getMachineNode(CPUX::ADDI, DL, XLenVT, TFI, Imm));
+    return;
+  }
   }
 
   SelectCode(Node);

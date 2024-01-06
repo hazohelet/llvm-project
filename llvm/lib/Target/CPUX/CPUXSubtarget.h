@@ -37,6 +37,7 @@ public:
   bool isPositionIndependent() const;
   const CPUXABIInfo &getABI() const;
 
+  constexpr unsigned getGPRSizeInBytes() const { return 4; }
   CPUXSubtarget(const Triple &TT, StringRef CPU, StringRef TuneCPU,
                 StringRef FS, const CPUXTargetMachine &TM);
 

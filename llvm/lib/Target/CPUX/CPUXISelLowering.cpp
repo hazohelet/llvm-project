@@ -60,13 +60,89 @@ CPUXTargetLowering::CPUXTargetLowering(const CPUXTargetMachine &TM,
   computeRegisterProperties(STI.getRegisterInfo());
 }
 
+static unsigned addLiveIn(MachineFunction &MF, unsigned PReg,
+                          const TargetRegisterClass *RC) {
+  MCRegister VReg = MF.getRegInfo().createVirtualRegister(RC);
+  MF.getRegInfo().addLiveIn(PReg, VReg);
+  return VReg;
+}
+
 #include "CPUXGenCallingConv.inc"
 
 SDValue CPUXTargetLowering::LowerFormalArguments(
     SDValue Chain, CallingConv::ID CallConv, bool IsVarArg,
     const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,
     SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
-  // TODO: Implement this
+  MachineFunction &MF = DAG.getMachineFunction();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  CPUXFunctionInfo *CPUXFI = MF.getInfo<CPUXFunctionInfo>();
+
+  // CPUXFI->setVarArgsFrameIndex(0);
+
+  SmallVector<CCValAssign, 16> ArgLocs;
+  CCState CCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
+  CCInfo.AnalyzeFormalArguments(Ins, CC_CPUX);
+
+  auto FuncArg = DAG.getMachineFunction().getFunction().arg_begin();
+
+  std::vector<SDValue> OutChains;
+
+  unsigned CurArgIdx = 0;
+  CCInfo.rewindByValRegsInfo();
+
+  for (unsigned I = 0, E = ArgLocs.size(); I != E; ++I) {
+    CCValAssign &VA = ArgLocs[I];
+
+    if (Ins[I].isOrigArg()) {
+      std::advance(FuncArg, Ins[I].getOrigArgIndex() - CurArgIdx);
+      CurArgIdx = Ins[I].getOrigArgIndex();
+    }
+
+    EVT ValVT = VA.getValVT();
+
+    bool IsRegLoc = VA.isRegLoc();
+
+    if (IsRegLoc) {
+      MVT RegVT = VA.getLocVT();
+      MCRegister ArgReg = VA.getLocReg();
+      const TargetRegisterClass *RC = getRegClassFor(RegVT);
+
+      unsigned Reg = addLiveIn(MF, ArgReg, RC);
+      SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, Reg, RegVT);
+
+      if (VA.getLocInfo() != CCValAssign::Full) {
+        unsigned Opcode = 0;
+        if (VA.getLocInfo() == CCValAssign::SExt)
+          Opcode = ISD::AssertSext;
+        else if (VA.getLocInfo() == CCValAssign::ZExt)
+          Opcode = ISD::AssertZext;
+        if (Opcode != 0)
+          ArgValue =
+              DAG.getNode(Opcode, DL, RegVT, ArgValue, DAG.getValueType(ValVT));
+
+        ArgValue = DAG.getNode(ISD::TRUNCATE, DL, ValVT, ArgValue);
+      }
+      InVals.push_back(ArgValue);
+    } else {
+      MVT LocVT = VA.getLocVT();
+      assert(VA.isMemLoc() && "Argument not register or memory");
+
+      int FI = MFI.CreateFixedObject(LocVT.getSizeInBits() / 8,
+                                     VA.getLocMemOffset(), true);
+
+      SDValue FIN = DAG.getFrameIndex(FI, getPointerTy(DAG.getDataLayout()));
+      SDValue Load = DAG.getLoad(LocVT, DL, Chain, FIN,
+                                 MachinePointerInfo::getFixedStack(MF, FI));
+      InVals.push_back(Load);
+      OutChains.push_back(Load.getValue(1));
+    }
+  }
+
+  if (!OutChains.empty()) {
+    OutChains.push_back(Chain);
+    Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, OutChains);
+  }
+
   return Chain;
 }
 

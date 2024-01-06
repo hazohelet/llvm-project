@@ -51,7 +51,42 @@ BitVector CPUXRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
 bool CPUXRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                                            int SPAdj, unsigned FIOperandNum,
                                            RegScavenger *RS) const {
-  // TODO: implement
+  MachineInstr &MI = *II;
+  MachineFunction &MF = *MI.getParent()->getParent();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+
+  unsigned I = 0;
+  while (!MI.getOperand(I).isFI()) {
+    ++I;
+    assert(I < MI.getNumOperands() && "Instr doesn't have FrameIndex operand!");
+  }
+
+  LLVM_DEBUG(errs() << "\nFunction : " << MF.getFunction().getName() << "\n";
+             errs() << "<--------->\n"
+                    << MI);
+
+  int FrameIndex = MI.getOperand(I).getIndex();
+
+  uint64_t StackSize = MFI.getStackSize();
+  int64_t SPOffset = MFI.getObjectOffset(FrameIndex);
+
+  LLVM_DEBUG(errs() << "FrameIndex : " << FrameIndex << "\n"
+                    << "StackSize : " << StackSize << "\n"
+                    << "SPOffset  : " << SPOffset << "\n");
+
+  unsigned FrameReg = CPUX::SP;
+  int64_t Offset = SPOffset + StackSize + MI.getOperand(I + 1).getImm();
+
+  LLVM_DEBUG(errs() << "FrameReg  : " << FrameReg << "\n"
+                    << "Offset    : " << Offset << "\n");
+
+  if (!MI.isDebugValue() && !isInt<12>(Offset)) {
+    assert(!MI.isDebugValue() && !isInt<16>(Offset));
+  }
+
+  MI.getOperand(I).ChangeToRegister(FrameReg, false);
+  MI.getOperand(I + 1).ChangeToImmediate(Offset);
+
   return true;
 }
 

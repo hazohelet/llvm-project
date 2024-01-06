@@ -18,11 +18,21 @@ public:
 
   static const CPUXInstrInfo *create(CPUXSubtarget &STI);
 
+  void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
+                   const DebugLoc &DL, MCRegister DstReg, MCRegister SrcReg,
+                   bool KillSrc) const override;
+
   /// Return the number of bytes of code the specified instruction may be
   unsigned GetInstSizeInBytes(const MachineInstr &MI) const;
 
   void expandRetRA(MachineBasicBlock &MBB, MachineBasicBlock::iterator I) const;
   bool expandPostRAPseudo(MachineInstr &MI) const override;
+
+  void adjustStackPtr(unsigned SP, int64_t Amount, MachineBasicBlock &MBB,
+                      MachineBasicBlock::iterator I) const;
+  void loadImmediate(int32_t Imm, MachineBasicBlock &MBB,
+                     MachineBasicBlock::iterator II, const DebugLoc &DL,
+                     MCRegister DstReg) const;
 };
 } // namespace llvm
 

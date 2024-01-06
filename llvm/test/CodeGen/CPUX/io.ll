@@ -18,3 +18,12 @@ define void @print_newline() {
   store volatile i32 10, ptr inttoptr (i32 12 to ptr), align 4
   ret void
 }
+
+define void @print_char(i32 noundef %0) {
+; CHECK-LABEL: print_char:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:  sw  a0, 12(zero)
+; CHECK-NEXT:  ret
+  store volatile i32 %0, ptr inttoptr (i32 12 to ptr), align 16
+  ret void
+}

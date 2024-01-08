@@ -58,6 +58,11 @@ CPUXTargetLowering::CPUXTargetLowering(const CPUXTargetMachine &TM,
 
   setMinFunctionAlignment(Align(4));
   computeRegisterProperties(STI.getRegisterInfo());
+
+  setOperationAction(ISD::ROTL, MVT::i32, Expand);
+  setOperationAction(ISD::ROTR, MVT::i32, Expand);
+  setOperationAction(ISD::CTTZ, MVT::i32, Expand);
+  setOperationAction(ISD::CTPOP, MVT::i32, Expand);
 }
 
 static unsigned addLiveIn(MachineFunction &MF, unsigned PReg,

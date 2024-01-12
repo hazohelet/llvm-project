@@ -17,6 +17,45 @@ CPUXMCInstLower::CPUXMCInstLower(CPUXAsmPrinter &asmprinter)
 
 void CPUXMCInstLower::Initialize(MCContext *C) { Ctx = C; }
 
+MCOperand CPUXMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
+                                              MachineOperandType MOTy,
+                                              unsigned Offset) const {
+  MCSymbolRefExpr::VariantKind Kind = MCSymbolRefExpr::VK_None;
+  CPUXMCExpr::CPUXExprKind TargetKind = CPUXMCExpr::VK_CPUX_None;
+  const MCSymbol *Symbol;
+
+  switch (MO.getTargetFlags()) {
+  default:
+    llvm_unreachable("Invalid target flag!");
+  case CPUXII::MO_HI20:
+    TargetKind = CPUXMCExpr::VK_CPUX_HI20;
+    break;
+  case CPUXII::MO_LO12_I:
+    TargetKind = CPUXMCExpr::VK_CPUX_LO12_I;
+    break;
+  }
+  switch (MOTy) {
+  default:
+    llvm_unreachable("Unknown operand type");
+  case MachineOperand::MO_GlobalAddress:
+    Symbol = AsmPrinter.getSymbol(MO.getGlobal());
+    Offset += MO.getOffset();
+    break;
+  }
+
+  const MCExpr *Expr = MCSymbolRefExpr::create(Symbol, Kind, *Ctx);
+  if (Offset != 0) {
+    assert(Offset > 0 && "Offset is negative!");
+    Expr = MCBinaryExpr::createAdd(Expr, MCConstantExpr::create(Offset, *Ctx),
+                                   *Ctx);
+  }
+
+  if (TargetKind != CPUXMCExpr::VK_CPUX_None)
+    Expr = CPUXMCExpr::create(TargetKind, Expr, *Ctx);
+
+  return MCOperand::createExpr(Expr);
+}
+
 MCOperand CPUXMCInstLower::LowerOperand(const MachineOperand &MO,
                                         unsigned offset) const {
   MachineOperandType MOTy = MO.getType();
@@ -30,6 +69,8 @@ MCOperand CPUXMCInstLower::LowerOperand(const MachineOperand &MO,
     return MCOperand::createReg(MO.getReg());
   case MachineOperand::MO_Immediate:
     return MCOperand::createImm(MO.getImm() + offset);
+  case MachineOperand::MO_GlobalAddress:
+    return LowerSymbolOperand(MO, MOTy, offset);
   case MachineOperand::MO_RegisterMask:
     break;
   }

@@ -3,6 +3,7 @@
 
 #include "CPUX.h"
 #include "MCTargetDesc/CPUXABIInfo.h"
+#include "MCTargetDesc/CPUXBaseInfo.h"
 #include "llvm/CodeGen/CallingConvLower.h"
 #include "llvm/CodeGen/SelectionDAG.h"
 #include "llvm/CodeGen/TargetLowering.h"
@@ -43,7 +44,17 @@ public:
                               const CPUXSubtarget &STI);
   static const CPUXTargetLowering *create(const CPUXTargetMachine &TM,
                                           const CPUXSubtarget &STI);
+  SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
   const char *getTargetNodeName(unsigned Opcode) const override;
+
+  template <class NodeTy>
+  SDValue getAddrStatic(NodeTy *N, EVT Ty, SelectionDAG &DAG) const {
+    SDLoc DL(N);
+    SDValue AddrHi = getTargetNode(N, Ty, DAG, CPUXII::MO_HI20);
+    SDValue AddrLo = getTargetNode(N, Ty, DAG, CPUXII::MO_LO12_I);
+    SDValue MNHi = SDValue(DAG.getMachineNode(CPUX::LUI, DL, Ty, AddrHi), 0);
+    return SDValue(DAG.getMachineNode(CPUX::ADDI, DL, Ty, MNHi, AddrLo), 0);
+  }
 
 protected:
   struct ByValArgInfo {
@@ -59,6 +70,8 @@ protected:
   const CPUXABIInfo &ABI;
 
 private:
+  SDValue getTargetNode(GlobalAddressSDNode *N, EVT Ty, SelectionDAG &DAG,
+                        unsigned Flag) const;
   SDValue lowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,

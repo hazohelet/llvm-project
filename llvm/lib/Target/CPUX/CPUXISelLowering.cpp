@@ -59,10 +59,12 @@ CPUXTargetLowering::CPUXTargetLowering(const CPUXTargetMachine &TM,
   setMinFunctionAlignment(Align(4));
   computeRegisterProperties(STI.getRegisterInfo());
 
-  setOperationAction(ISD::ROTL, MVT::i32, Expand);
-  setOperationAction(ISD::ROTR, MVT::i32, Expand);
-  setOperationAction(ISD::CTTZ, MVT::i32, Expand);
-  setOperationAction(ISD::CTPOP, MVT::i32, Expand);
+  setOperationAction(ISD::ROTL, XLenVT, Expand);
+  setOperationAction(ISD::ROTR, XLenVT, Expand);
+  setOperationAction(ISD::CTTZ, XLenVT, Expand);
+  setOperationAction(ISD::CTPOP, XLenVT, Expand);
+
+  setOperationAction(ISD::GlobalAddress, XLenVT, Custom);
 }
 
 static unsigned addLiveIn(MachineFunction &MF, unsigned PReg,
@@ -73,6 +75,37 @@ static unsigned addLiveIn(MachineFunction &MF, unsigned PReg,
 }
 
 #include "CPUXGenCallingConv.inc"
+
+SDValue CPUXTargetLowering::LowerOperation(SDValue Op,
+                                           SelectionDAG &DAG) const {
+  switch (Op.getOpcode()) {
+  case ISD::GlobalAddress:
+    return lowerGlobalAddress(Op, DAG);
+  default:
+    llvm_unreachable("unimplemented operand");
+  }
+}
+
+SDValue CPUXTargetLowering::lowerGlobalAddress(SDValue Op,
+                                               SelectionDAG &DAG) const {
+  // Our CPU only supports static relocation model
+  SDLoc DL(Op);
+  EVT PtrVT = getPointerTy(DAG.getDataLayout());
+  GlobalAddressSDNode *GSDN = cast<GlobalAddressSDNode>(Op);
+  int64_t Offset = GSDN->getOffset();
+  SDValue Addr = getAddrStatic(GSDN, PtrVT, DAG);
+  if (Offset != 0) {
+    return DAG.getNode(ISD::ADD, DL, PtrVT, Addr,
+                       DAG.getConstant(Offset, DL, PtrVT));
+  }
+  return Addr;
+}
+
+SDValue CPUXTargetLowering::getTargetNode(GlobalAddressSDNode *N, EVT Ty,
+                                          SelectionDAG &DAG,
+                                          unsigned Flag) const {
+  return DAG.getTargetGlobalAddress(N->getGlobal(), SDLoc(N), Ty, 0, Flag);
+}
 
 SDValue CPUXTargetLowering::LowerFormalArguments(
     SDValue Chain, CallingConv::ID CallConv, bool IsVarArg,

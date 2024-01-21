@@ -34,6 +34,8 @@ bool CPUXAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
 }
 
 void CPUXAsmPrinter::emitInstruction(const MachineInstr *MI) {
+  if (emitPseudoExpansionLowering(*OutStreamer, MI))
+    return;
   if (MI->isDebugValue()) {
     SmallString<128> Str;
     raw_svector_ostream OS(Str);
@@ -46,6 +48,13 @@ void CPUXAsmPrinter::emitInstruction(const MachineInstr *MI) {
   MCInstLowering.Lower(MI, TmpInstO);
   OutStreamer->emitInstruction(TmpInstO, getSubtargetInfo());
 }
+
+bool CPUXAsmPrinter::lowerOperand(const MachineOperand &MO, MCOperand &MCOp) {
+  MCOp = MCInstLowering.LowerOperand(MO);
+  return MCOp.isValid();
+}
+
+#include "CPUXGenMCPseudoLowering.inc"
 
 const char *CPUXAsmPrinter::getCurrentABIString() const {
   switch (static_cast<CPUXTargetMachine &>(TM).getABI().GetEnumValue()) {
@@ -77,16 +86,7 @@ void CPUXAsmPrinter::emitFunctionBodyStart() {
 
 void CPUXAsmPrinter::emitFunctionBodyEnd() {}
 
-void CPUXAsmPrinter::emitStartOfAsmFile(Module &M) {
-  if (OutStreamer->hasRawTextSupport()) {
-    OutStreamer->emitRawText("\t.section .mdebug." +
-                             Twine(getCurrentABIString()));
-  }
-
-  if (OutStreamer->hasRawTextSupport()) {
-    OutStreamer->emitRawText("\t.previous");
-  }
-}
+void CPUXAsmPrinter::emitStartOfAsmFile(Module &M) {}
 
 void CPUXAsmPrinter::PrintDebugValueComment(const MachineInstr *MI,
                                             raw_ostream &OS) {

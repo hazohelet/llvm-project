@@ -37,6 +37,9 @@ public:
 
   virtual bool runOnMachineFunction(MachineFunction &MF) override;
 
+  bool emitPseudoExpansionLowering(MCStreamer &OutStreamer,
+                                   const MachineInstr *MI);
+
   void emitInstruction(const MachineInstr *MI) override;
   void printSavedRegsBitmask(raw_ostream &O) {}
   void printHex32(unsigned int Value, raw_ostream &O);

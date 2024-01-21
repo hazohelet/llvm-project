@@ -1,5 +1,18 @@
+// For select operands:
+// 0: Dest
+// 1: Cond LHS
+// 2: Cond RHS
+// 3: Cond Opcode
+// 4: True Value
+// 5: False Value
+def SDT_CPUXSelectCC : SDTypeProfile<1, 5, [SDTCisSameAs<1, 2>,
+                                            SDTCisSameAs<0, 4>,
+                                            SDTCisSameAs<4, 5>]>;
+
 def CPUXRet : SDNode<"CPUXISD::Ret", SDTNone,
   [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
+def SelectCC : SDNode<"CPUXISD::SELECT_CC", SDT_CPUXSelectCC, [SDNPInGlue]>;
 
 include "CPUXInstrFormats.td"
 
@@ -104,6 +117,15 @@ def: InstAlias<"jr $rs",     (JALR ZERO, GPR:$rs, 0)>;
 def: InstAlias<"jalr $rs",   (JALR RA,   GPR:$rs, 0)>;
 def: InstAlias<"ret",         (JALR ZERO,      RA, 0), 2>;
 
+let isCall = 1 in
+class JumpLink<bits<7> opcode, string opstr, DAGOperand opnd>:
+  CPUX_J<opcode, (outs GPR:$rd), (ins opnd:$imm20),
+  !strconcat(opstr, "  $rd, $imm20"), [], IIAlu>;
+
+def JAL : JumpLink<0b1101111, "jal", brtarget20>;
+def : InstAlias<"j $offset",   (JAL ZERO, brtarget20:$offset)>;
+def : InstAlias<"jal $offset", (JAL RA,   brtarget20:$offset)>;
+
 let canFoldAsLoad = 1 in
 class LoadMemory<bits<7> opcode, bits<3> funct3, string instr_asm,
   RegisterClass RC> :
@@ -145,12 +167,49 @@ class SetCC_I<bits<7> opcode, bits<3> funct3,
     let isReMaterializable = 1;
 }
 
+class CBranch12<bits<7> opcode, bits<3> funct3,
+  string instr_asm, RegisterClass RC> :
+  CPUX_B<opcode, funct3, (outs), (ins RC:$rs1, RC:$rs2, brtarget12:$imm12),
+  !strconcat(instr_asm, "  $rs1, $rs2, $imm12"), [], IIAlu> {
+    let isBranch = 1;
+    let isTerminator = 1;
+}
+
+def BEQ  : CBranch12<0b1100011, 0b000, "beq", GPR>;
+def BNE  : CBranch12<0b1100011, 0b001, "bne", GPR>;
+def BLT  : CBranch12<0b1100011, 0b100, "blt", GPR>;
+def BGE  : CBranch12<0b1100011, 0b101, "bge", GPR>;
+def BLTU : CBranch12<0b1100011, 0b110, "bltu", GPR>;
+def BGEU : CBranch12<0b1100011, 0b111, "bgeu", GPR>;
+
+def: InstAlias<"beqz  $rs, $imm12", (BEQ  GPR:$rs, ZERO,    brtarget12:$imm12)>;
+def: InstAlias<"bnez  $rs, $imm12", (BNE  GPR:$rs, ZERO,    brtarget12:$imm12)>;
+def: InstAlias<"bltz  $rs, $imm12", (BLT  GPR:$rs, ZERO,    brtarget12:$imm12)>;
+def: InstAlias<"bgtz  $rs, $imm12", (BLT  ZERO,    GPR:$rs, brtarget12:$imm12)>;
+def: InstAlias<"bgez  $rs, $imm12", (BGE  GPR:$rs, ZERO,    brtarget12:$imm12)>;
+def: InstAlias<"blez  $rs, $imm12", (BGE  ZERO,    GPR:$rs, brtarget12:$imm12)>;
+
+
+
+let isBarrier = 1, isBranch = 1, isTerminator = 1 in
+  def PseudoBR : CPUXPseudo<(outs), (ins brtarget20:$simm20u), "",
+  [(br bb:$simm20u)]>, PseudoInstExpansion<(JAL ZERO, brtarget20:$simm20u)>;
+
+let usesCustomInserter = 1 in
+class SelectCC_rrirr<RegisterClass RC, RegisterClass cmpty>
+  : CPUXPseudo<(outs RC:$dst),
+    (ins cmpty:$lhs, cmpty:$rhs, simm12:$imm, RC:$truev, RC:$falsev), "",
+    [(set RC:$dst, (SelectCC cmpty:$lhs, cmpty:$rhs, (i32 imm:$imm), RC:$truev, RC:$falsev))]>;
+
+def Select_GPR_Using_CC_GPR : SelectCC_rrirr<GPR, GPR>;
+
 def ADDI: ArithLogicI<0b0010011, 0b000, "addi", add, simm12, GPR>;
 def XORI: ArithLogicI<0b0010011, 0b100, "xori", xor, simm12, GPR>;
 def ORI:  ArithLogicI<0b0010011, 0b110, "ori",  or,  simm12, GPR>;
 def ANDI: ArithLogicI<0b0010011, 0b111, "andi", and, simm12, GPR>;
 
 def: InstAlias<"li  $rs, $imm", (ADDI GPR:$rs, ZERO, simm12:$imm)>;
+def: InstAlias<"mv  $rd, $rs", (ADDI GPR:$rd, GPR:$rs, 0)>;
 
 def LUI: ArithLogicU<0b0110111, "lui", GPR, simm20u>;
 def ADD: ArithLogicR<0b0110011, 0b000, 0b0000000, "add", add, GPR>;
@@ -248,4 +307,37 @@ defm : StorePattern<store, SW, GPR>;
 def : Pat<(simm12:$in), (ADDI ZERO, simm12:$in)>;
 def : Pat<(simm20u:$in), (LUI (HI20 imm:$in))>;
 def : Pat<(simm32:$imm), (ADDI (LUI (HI20 imm:$imm)), (LO12sext imm:$imm))>;
+
+
+def : Pat<(brcond (i32 (setne GPR:$lhs, 0)), bb:$dst),
+        (BNE GPR:$lhs, ZERO, bb:$dst)>;
+def : Pat<(brcond (i32 (seteq GPR:$lhs, 0)), bb:$dst),
+        (BEQ GPR:$lhs, ZERO, bb:$dst)>;
+
+def : Pat<(brcond (i32 (seteq GPR:$lhs, GPR:$rhs)), bb:$dst),
+        (BEQ GPR:$lhs, GPR:$rhs, bb:$dst)>;
+def : Pat<(brcond (i32 (setueq GPR:$lhs, GPR:$rhs)), bb:$dst),
+        (BEQ GPR:$lhs, GPR:$rhs, bb:$dst)>;
+def : Pat<(brcond (i32 (setne GPR:$lhs, GPR:$rhs)), bb:$dst),
+        (BNE GPR:$lhs, GPR:$rhs, bb:$dst)>;
+def : Pat<(brcond (i32 (setune GPR:$lhs, GPR:$rhs)), bb:$dst),
+        (BNE GPR:$lhs, GPR:$rhs, bb:$dst)>;
+def : Pat<(brcond (i32 (setlt GPR:$lhs, GPR:$rhs)), bb:$dst),
+        (BLT GPR:$lhs, GPR:$rhs, bb:$dst)>;
+def : Pat<(brcond (i32 (setult GPR:$lhs, GPR:$rhs)), bb:$dst),
+        (BLTU GPR:$lhs, GPR:$rhs, bb:$dst)>;
+def : Pat<(brcond (i32 (setgt GPR:$lhs, GPR:$rhs)), bb:$dst),
+        (BLT GPR:$rhs, GPR:$lhs, bb:$dst)>;
+def : Pat<(brcond (i32 (setugt GPR:$lhs, GPR:$rhs)), bb:$dst),
+        (BLTU GPR:$rhs, GPR:$lhs, bb:$dst)>;
+def : Pat<(brcond (i32 (setle GPR:$lhs, GPR:$rhs)), bb:$dst),
+        (BGE GPR:$rhs, GPR:$lhs, bb:$dst)>;
+def : Pat<(brcond (i32 (setule GPR:$lhs, GPR:$rhs)), bb:$dst),
+        (BGEU GPR:$rhs, GPR:$lhs, bb:$dst)>;
+def : Pat<(brcond (i32 (setge GPR:$lhs, GPR:$rhs)), bb:$dst),
+        (BGE GPR:$lhs, GPR:$rhs, bb:$dst)>;
+def : Pat<(brcond (i32 (setuge GPR:$lhs, GPR:$rhs)), bb:$dst),
+        (BGEU GPR:$lhs, GPR:$rhs, bb:$dst)>;
+def : Pat<(brcond GPR:$cond, bb:$dst),
+        (BNE GPR:$cond, ZERO, bb:$dst)>;
 

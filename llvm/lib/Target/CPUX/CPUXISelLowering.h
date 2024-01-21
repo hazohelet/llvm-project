@@ -24,6 +24,7 @@ enum NodeType : unsigned {
   ThreadPointer,
   // Return
   Ret,
+  SELECT_CC,
   EH_RETURN,
 
   DivRem,
@@ -73,6 +74,7 @@ private:
   SDValue getTargetNode(GlobalAddressSDNode *N, EVT Ty, SelectionDAG &DAG,
                         unsigned Flag) const;
   SDValue lowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerSELECT(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
                                bool IsVarArg,
@@ -84,6 +86,13 @@ private:
                       const SmallVectorImpl<ISD::OutputArg> &Outs,
                       const SmallVectorImpl<SDValue> &OutVals, const SDLoc &DL,
                       SelectionDAG &DAG) const override;
+  static unsigned getBranchOpcodeForIntCondCode(ISD::CondCode CC);
+
+  MachineBasicBlock *
+  EmitInstrWithCustomInserter(MachineInstr &MI,
+                              MachineBasicBlock *BB) const override;
+  static MachineBasicBlock *emitSelectPseudo(MachineInstr &MI,
+                                             MachineBasicBlock *BB);
 };
 } // namespace llvm
 

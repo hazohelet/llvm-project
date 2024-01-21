@@ -27,6 +27,8 @@ MCOperand CPUXMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
   switch (MO.getTargetFlags()) {
   default:
     llvm_unreachable("Invalid target flag!");
+  case CPUXII::MO_None:
+    break;
   case CPUXII::MO_HI20:
     TargetKind = CPUXMCExpr::VK_CPUX_HI20;
     break;
@@ -40,6 +42,20 @@ MCOperand CPUXMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
   case MachineOperand::MO_GlobalAddress:
     Symbol = AsmPrinter.getSymbol(MO.getGlobal());
     Offset += MO.getOffset();
+    break;
+  case MachineOperand::MO_ExternalSymbol:
+    Symbol = AsmPrinter.GetExternalSymbolSymbol(MO.getSymbolName());
+    Offset += MO.getOffset();
+    break;
+  case MachineOperand::MO_MachineBasicBlock:
+    Symbol = MO.getMBB()->getSymbol();
+    break;
+  case MachineOperand::MO_BlockAddress:
+    Symbol = AsmPrinter.GetBlockAddressSymbol(MO.getBlockAddress());
+    Offset += MO.getOffset();
+    break;
+  case MachineOperand::MO_JumpTableIndex:
+    Symbol = AsmPrinter.GetJTISymbol(MO.getIndex());
     break;
   }
 
@@ -69,6 +85,10 @@ MCOperand CPUXMCInstLower::LowerOperand(const MachineOperand &MO,
     return MCOperand::createReg(MO.getReg());
   case MachineOperand::MO_Immediate:
     return MCOperand::createImm(MO.getImm() + offset);
+  case MachineOperand::MO_ExternalSymbol:
+  case MachineOperand::MO_MachineBasicBlock:
+  case MachineOperand::MO_BlockAddress:
+  case MachineOperand::MO_JumpTableIndex:
   case MachineOperand::MO_GlobalAddress:
     return LowerSymbolOperand(MO, MOTy, offset);
   case MachineOperand::MO_RegisterMask:

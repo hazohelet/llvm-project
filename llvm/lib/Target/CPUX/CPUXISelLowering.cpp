@@ -44,6 +44,8 @@ const char *CPUXTargetLowering::getTargetNodeName(unsigned Opcode) const {
     return "CPUXISD::DivRemU";
   case CPUXISD::Wrapper:
     return "CPUXISD::Wrapper";
+  case CPUXISD::SELECT_CC:
+    return "CPUXISD::SELECT_CC";
   default:
     return NULL;
   }
@@ -65,6 +67,14 @@ CPUXTargetLowering::CPUXTargetLowering(const CPUXTargetMachine &TM,
   setOperationAction(ISD::CTPOP, XLenVT, Expand);
 
   setOperationAction(ISD::GlobalAddress, XLenVT, Custom);
+
+  setOperationAction(ISD::BR_CC, XLenVT, Expand);
+  setOperationAction(ISD::BR_JT, MVT::Other, Expand);
+  setOperationAction(ISD::SELECT, XLenVT, Custom);
+  setOperationAction(ISD::SELECT_CC, XLenVT, Expand);
+
+  // Don't use table jump
+  setMinimumJumpTableEntries(INT_MAX);
 }
 
 static unsigned addLiveIn(MachineFunction &MF, unsigned PReg,
@@ -79,6 +89,8 @@ static unsigned addLiveIn(MachineFunction &MF, unsigned PReg,
 SDValue CPUXTargetLowering::LowerOperation(SDValue Op,
                                            SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
+  case ISD::SELECT:
+    return lowerSELECT(Op, DAG);
   case ISD::GlobalAddress:
     return lowerGlobalAddress(Op, DAG);
   default:
@@ -101,10 +113,95 @@ SDValue CPUXTargetLowering::lowerGlobalAddress(SDValue Op,
   return Addr;
 }
 
+SDValue CPUXTargetLowering::lowerSELECT(SDValue Op, SelectionDAG &DAG) const {
+  SDValue CondV = Op.getOperand(0);
+  SDValue TrueV = Op.getOperand(1);
+  SDValue FalseV = Op.getOperand(2);
+  SDLoc DL(Op);
+
+  SDValue Zero = DAG.getRegister(CPUX::ZERO, MVT::i32);
+  SDValue SetNE = DAG.getConstant(ISD::SETNE, DL, MVT::i32);
+
+  SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
+  SDValue Ops[] = {CondV, Zero, SetNE, TrueV, FalseV};
+  return DAG.getNode(CPUXISD::SELECT_CC, DL, VTs, Ops);
+}
+
 SDValue CPUXTargetLowering::getTargetNode(GlobalAddressSDNode *N, EVT Ty,
                                           SelectionDAG &DAG,
                                           unsigned Flag) const {
   return DAG.getTargetGlobalAddress(N->getGlobal(), SDLoc(N), Ty, 0, Flag);
+}
+
+unsigned CPUXTargetLowering::getBranchOpcodeForIntCondCode(ISD::CondCode CC) {
+  switch (CC) {
+  default:
+    llvm_unreachable("Invalid integer condition!");
+  case ISD::SETEQ:
+    return CPUX::BEQ;
+  case ISD::SETNE:
+    return CPUX::BNE;
+  case ISD::SETLT:
+    return CPUX::BLT;
+  case ISD::SETGE:
+    return CPUX::BGE;
+  case ISD::SETULT:
+    return CPUX::BLTU;
+  case ISD::SETUGE:
+    return CPUX::BGEU;
+  }
+}
+
+MachineBasicBlock *CPUXTargetLowering::emitSelectPseudo(MachineInstr &MI,
+                                                        MachineBasicBlock *BB) {
+  const TargetInstrInfo &TII = *BB->getParent()->getSubtarget().getInstrInfo();
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  DebugLoc DL = MI.getDebugLoc();
+  auto I = ++BB->getIterator();
+
+  MachineBasicBlock *HeadMBB = BB;
+  MachineFunction *F = BB->getParent();
+  MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *IfFalseMBB = F->CreateMachineBasicBlock(LLVM_BB);
+
+  F->insert(I, IfFalseMBB);
+  F->insert(I, TailMBB);
+
+  TailMBB->splice(TailMBB->begin(), HeadMBB,
+                  std::next(MachineBasicBlock::iterator(MI)), HeadMBB->end());
+
+  TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
+  HeadMBB->addSuccessor(IfFalseMBB);
+  HeadMBB->addSuccessor(TailMBB);
+
+  unsigned LHS = MI.getOperand(1).getReg();
+  unsigned RHS = MI.getOperand(2).getReg();
+  auto CC = static_cast<ISD::CondCode>(MI.getOperand(3).getImm());
+  unsigned Opcode = getBranchOpcodeForIntCondCode(CC);
+
+  BuildMI(HeadMBB, DL, TII.get(Opcode)).addReg(LHS).addReg(RHS).addMBB(TailMBB);
+
+  IfFalseMBB->addSuccessor(TailMBB);
+
+  BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(CPUX::PHI),
+          MI.getOperand(0).getReg())
+      .addReg(MI.getOperand(4).getReg())
+      .addMBB(HeadMBB)
+      .addReg(MI.getOperand(5).getReg())
+      .addMBB(IfFalseMBB);
+  MI.eraseFromParent();
+  return TailMBB;
+}
+
+MachineBasicBlock *
+CPUXTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
+                                                MachineBasicBlock *BB) const {
+  switch (MI.getOpcode()) {
+  default:
+    llvm_unreachable("Unexpected instr type to insert");
+  case CPUX::Select_GPR_Using_CC_GPR:
+    return emitSelectPseudo(MI, BB);
+  }
 }
 
 SDValue CPUXTargetLowering::LowerFormalArguments(

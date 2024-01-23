@@ -29,6 +29,9 @@ MCOperand CPUXMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
     llvm_unreachable("Invalid target flag!");
   case CPUXII::MO_None:
     break;
+  case CPUXII::MO_CALL:
+    TargetKind = CPUXMCExpr::VK_CPUX_CALL;
+    break;
   case CPUXII::MO_HI20:
     TargetKind = CPUXMCExpr::VK_CPUX_HI20;
     break;

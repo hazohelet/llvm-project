@@ -1,3 +1,5 @@
+def SDT_CPUXCall : SDTypeProfile<0, 1, [SDTCisVT<0, iPTR>]>;
+
 // For select operands:
 // 0: Dest
 // 1: Cond LHS
@@ -13,6 +15,16 @@ def CPUXRet : SDNode<"CPUXISD::Ret", SDTNone,
   [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 
 def SelectCC : SDNode<"CPUXISD::SELECT_CC", SDT_CPUXSelectCC, [SDNPInGlue]>;
+
+def SDT_CPUXCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
+def SDT_CPUXCallSeqEnd   : SDCallSeqEnd  <[SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
+
+def CPUXCall : SDNode<"CPUXISD::CALL", SDT_CPUXCall, [SDNPHasChain,
+  SDNPOptInGlue, SDNPOutGlue, SDNPVariadic]>;
+def CPUXCallSeqStart : SDNode<"ISD::CALLSEQ_START", SDT_CPUXCallSeqStart,
+                              [SDNPHasChain, SDNPOutGlue]>;
+def CPUXCallSeqEnd   : SDNode<"ISD::CALLSEQ_END", SDT_CPUXCallSeqEnd,
+                              [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 
 include "CPUXInstrFormats.td"
 
@@ -30,6 +42,15 @@ def NegImm : SDNodeXForm<imm, [{
   return CurDAG->getTargetConstant(-N->getSExtValue(), SDLoc(N),
                                    N->getValueType(0));
 }]>;
+
+def CallSymbol : AsmOperandClass {
+  let Name = "CallSymbol";
+  let RenderMethod = "addImmOperands";
+}
+
+def call_symbol : Operand<i32> {
+  let ParserMatchClass = CallSymbol;
+}
 
 def LO12sext : SDNodeXForm<imm, [{
   return CurDAG->getTargetConstant(SignExtend64<12>(N->getZExtValue()),
@@ -202,6 +223,19 @@ class SelectCC_rrirr<RegisterClass RC, RegisterClass cmpty>
     [(set RC:$dst, (SelectCC cmpty:$lhs, cmpty:$rhs, (i32 imm:$imm), RC:$truev, RC:$falsev))]>;
 
 def Select_GPR_Using_CC_GPR : SelectCC_rrirr<GPR, GPR>;
+
+let Defs = [SP], Uses = [SP], hasSideEffects = 1 in {
+  def ADJCALLSTACKDOWN : CPUXPseudo<(outs), (ins simm12:$amt1, simm12:$amt2), "",
+                                    [(CPUXCallSeqStart timm:$amt1, timm:$amt2)]>;
+  def ADJCALLSTACKUP   : CPUXPseudo<(outs), (ins simm12:$amt1, simm12:$amt2), "",
+                                    [(CPUXCallSeqEnd timm:$amt1, timm:$amt2)]>;
+}
+
+let isCall = 1, Defs = [RA], isCodeGenOnly = 0 in {
+  def PseudoCALL : CPUXPseudo<(outs), (ins call_symbol:$target), "call $target", []>;
+}
+def : Pat<(CPUXCall tglobaladdr:$func),  (PseudoCALL tglobaladdr:$func)>;
+def : Pat<(CPUXCall texternalsym:$func), (PseudoCALL texternalsym:$func)>;
 
 def ADDI: ArithLogicI<0b0010011, 0b000, "addi", add, simm12, GPR>;
 def XORI: ArithLogicI<0b0010011, 0b100, "xori", xor, simm12, GPR>;

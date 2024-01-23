@@ -26,6 +26,8 @@ using namespace llvm;
 
 const char *CPUXTargetLowering::getTargetNodeName(unsigned Opcode) const {
   switch (Opcode) {
+  case CPUXISD::CALL:
+    return "CPUXISD::CALL";
   case CPUXISD::TailCall:
     return "CPUXISD::TailCall";
   case CPUXISD::Hi:
@@ -202,6 +204,177 @@ CPUXTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   case CPUX::Select_GPR_Using_CC_GPR:
     return emitSelectPseudo(MI, BB);
   }
+}
+
+SDValue CPUXTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
+                                      SmallVectorImpl<SDValue> &InVals) const {
+  SelectionDAG &DAG = CLI.DAG;
+  SDLoc DL = CLI.DL;
+  SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
+  SmallVectorImpl<SDValue> &OutVals = CLI.OutVals;
+  SmallVectorImpl<ISD::InputArg> &Ins = CLI.Ins;
+  SDValue Chain = CLI.Chain;
+  SDValue Callee = CLI.Callee;
+  bool &IsTailCall = CLI.IsTailCall;
+  CallingConv::ID CallConv = CLI.CallConv;
+  bool IsVarArg = CLI.IsVarArg;
+
+  EVT PtrVT = getPointerTy(DAG.getDataLayout());
+
+  MachineFunction &MF = DAG.getMachineFunction();
+  const TargetFrameLowering *TFL = Subtarget.getFrameLowering();
+
+  SmallVector<CCValAssign, 16> ArgLocs;
+  CCState CCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
+  CCInfo.AnalyzeCallOperands(Outs, CC_CPUX);
+
+  // how many bytes are to be pushed on the stack.
+  unsigned NextStackOffset = CCInfo.getNextStackOffset();
+
+  unsigned StackAlignment = TFL->getStackAlignment();
+  NextStackOffset = alignTo(NextStackOffset, StackAlignment);
+  SDValue NextStackOffsetVal =
+      DAG.getIntPtrConstant(NextStackOffset, DL, /*isTarget=*/true);
+
+  if (!IsTailCall)
+    Chain = DAG.getCALLSEQ_START(Chain, NextStackOffset, 0, DL);
+
+  SDValue StackPtr = DAG.getCopyFromReg(Chain, DL, CPUX::SP, PtrVT);
+
+  std::deque<std::pair<Register, SDValue>> RegsToPass;
+  SmallVector<SDValue, 8> MemOpChains;
+
+  for (unsigned I = 0, E = ArgLocs.size(); I != E; ++I) {
+    CCValAssign &VA = ArgLocs[I];
+    SDValue Arg = OutVals[I];
+    MVT LocVT = VA.getLocVT();
+
+    switch (VA.getLocInfo()) {
+    default:
+      llvm_unreachable("Unknown loc info!");
+    case CCValAssign::Full:
+      break;
+    case CCValAssign::SExt:
+      Arg = DAG.getNode(ISD::SIGN_EXTEND, DL, LocVT, Arg);
+      break;
+    case CCValAssign::ZExt:
+      Arg = DAG.getNode(ISD::ZERO_EXTEND, DL, LocVT, Arg);
+      break;
+    case CCValAssign::AExt:
+      Arg = DAG.getNode(ISD::ANY_EXTEND, DL, LocVT, Arg);
+      break;
+    }
+
+    if (VA.isRegLoc()) {
+      RegsToPass.push_back(std::make_pair(VA.getLocReg(), Arg));
+      continue;
+    }
+
+    assert(VA.isMemLoc() && "Argument not register or memory");
+
+    MemOpChains.push_back(passArgOnStack(StackPtr, VA.getLocMemOffset(), Chain,
+                                         Arg, DL, IsTailCall, DAG));
+  }
+
+  if (!MemOpChains.empty()) {
+    Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, MemOpChains);
+  }
+
+  if (auto *S = dyn_cast<GlobalAddressSDNode>(Callee)) {
+    Callee = DAG.getTargetGlobalAddress(S->getGlobal(), DL, PtrVT, 0,
+                                        CPUXII::MO_CALL);
+  } else if (auto *S = dyn_cast<ExternalSymbolSDNode>(Callee)) {
+    Callee =
+        DAG.getTargetExternalSymbol(S->getSymbol(), PtrVT, CPUXII::MO_CALL);
+  }
+
+  SmallVector<SDValue, 8> Ops(1, Chain);
+  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
+
+  getOpndList(Ops, RegsToPass, /*GlobalOrExternal=*/false,
+              /*InternalLinkage=*/false, CLI, Callee, Chain);
+
+  Chain = DAG.getNode(CPUXISD::CALL, DL, NodeTys, Ops);
+  SDValue InFlag = Chain.getValue(1);
+
+  Chain = DAG.getCALLSEQ_END(Chain, NextStackOffsetVal,
+                             DAG.getIntPtrConstant(0, DL, true), InFlag, DL);
+
+  InFlag = Chain.getValue(1);
+
+  return LowerCallResult(Chain, InFlag, CallConv, IsVarArg, Ins, DL, DAG,
+                         InVals, CLI.Callee.getNode(), CLI.RetTy);
+}
+
+SDValue CPUXTargetLowering::LowerCallResult(
+    SDValue Chain, SDValue InFlag, CallingConv::ID CallConv, bool IsVarArg,
+    const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,
+    SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals, const SDNode *CallNode,
+    const Type *RetTy) const {
+  SmallVector<CCValAssign, 16> RVLocs;
+  CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), RVLocs,
+                 *DAG.getContext());
+  CCInfo.AnalyzeCallResult(Ins, RetCC_CPUX);
+
+  for (auto &RVL : RVLocs) {
+    SDValue Val =
+        DAG.getCopyFromReg(Chain, DL, RVL.getLocReg(), RVL.getLocVT(), InFlag);
+    Chain = Val.getValue(1);
+    InFlag = Val.getValue(2);
+
+    if (RVL.getValVT() != RVL.getLocVT())
+      Val = DAG.getNode(ISD::BITCAST, DL, RVL.getValVT(), Val);
+
+    InVals.emplace_back(Val);
+  }
+
+  return Chain;
+}
+
+SDValue CPUXTargetLowering::passArgOnStack(SDValue StackPtr, unsigned Offset,
+                                           SDValue Chain, SDValue Arg,
+                                           const SDLoc &DL, bool IsTailCall,
+                                           SelectionDAG &DAG) const {
+  if (!IsTailCall) {
+    SDValue PtrOff =
+        DAG.getNode(ISD::ADD, DL, getPointerTy(DAG.getDataLayout()), StackPtr,
+                    DAG.getIntPtrConstant(Offset, DL));
+    return DAG.getStore(Chain, DL, Arg, PtrOff, MachinePointerInfo());
+  }
+
+  MachineFrameInfo &MFI = DAG.getMachineFunction().getFrameInfo();
+  int FI = MFI.CreateFixedObject(Arg.getValueSizeInBits() / 8, Offset,
+                                 /*IsImmutable=*/false);
+  SDValue FIN = DAG.getFrameIndex(FI, getPointerTy(DAG.getDataLayout()));
+  return DAG.getStore(Chain, DL, Arg, FIN, MachinePointerInfo(),
+                      /*Alignment=*/0, MachineMemOperand::MOVolatile);
+}
+
+void CPUXTargetLowering::getOpndList(
+    SmallVectorImpl<SDValue> &Ops,
+    std::deque<std::pair<Register, SDValue>> &RegsToPass, bool GlobalOrExternal,
+    bool InternalLinkage, CallLoweringInfo &CLI, SDValue Callee,
+    SDValue Chain) const {
+  Ops.push_back(Callee);
+
+  SDValue InFlag;
+
+  for (auto &Reg : RegsToPass) {
+    Chain = CLI.DAG.getCopyToReg(Chain, CLI.DL, Reg.first, Reg.second, InFlag);
+    InFlag = Chain.getValue(1);
+  }
+
+  for (auto &Reg : RegsToPass)
+    Ops.push_back(CLI.DAG.getRegister(Reg.first, Reg.second.getValueType()));
+
+  const TargetRegisterInfo *TRI = Subtarget.getRegisterInfo();
+  const uint32_t *Mask =
+      TRI->getCallPreservedMask(CLI.DAG.getMachineFunction(), CLI.CallConv);
+  assert(Mask && "Missing call preserved mask for calling convention");
+  Ops.push_back(CLI.DAG.getRegisterMask(Mask));
+
+  if (InFlag.getNode())
+    Ops.push_back(InFlag);
 }
 
 SDValue CPUXTargetLowering::LowerFormalArguments(

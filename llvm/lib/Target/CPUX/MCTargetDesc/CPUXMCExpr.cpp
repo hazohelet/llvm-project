@@ -29,6 +29,12 @@ void CPUXMCExpr::printImpl(raw_ostream &OS, const MCAsmInfo *MAI) const {
   switch (Kind) {
   case VK_CPUX_None:
     llvm_unreachable("Invalid kind!");
+  case VK_CPUX_CALL:
+    if (Expr->evaluateAsAbsolute(AbsVal))
+      OS << AbsVal;
+    else
+      Expr->print(OS, MAI, true);
+    return;
   case VK_CPUX_HI20:
     OS << "%hi";
     break;

@@ -91,3 +91,16 @@ bool CPUXFrameLowering::hasFP(const MachineFunction &MF) const {
          MFI.hasVarSizedObjects() || MFI.isFrameAddressTaken() ||
          TRI->hasStackRealignment(MF);
 }
+
+MachineBasicBlock::iterator CPUXFrameLowering::eliminateCallFramePseudoInstr(
+    MachineFunction &MF, MachineBasicBlock &MBB,
+    MachineBasicBlock::iterator I) const {
+  Register SPReg = CPUX::SP;
+  if (!hasReservedCallFrame(MF)) {
+    int64_t Amount = I->getOperand(0).getImm();
+    if (I->getOpcode() == CPUX::ADJCALLSTACKDOWN)
+      Amount = -Amount;
+    STI.getInstrInfo()->adjustStackPtr(SPReg, Amount, MBB, I);
+  }
+  return MBB.erase(I);
+}

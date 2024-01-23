@@ -14,6 +14,7 @@ namespace llvm {
 namespace CPUXISD {
 enum NodeType : unsigned {
   FIRST_NUMBER = ISD::BUILTIN_OP_END,
+  CALL,
   TailCall,
   // Obtain higher 16 bits - not related to %hi
   Hi,
@@ -75,6 +76,23 @@ private:
                         unsigned Flag) const;
   SDValue lowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerSELECT(SDValue Op, SelectionDAG &DAG) const;
+
+  SDValue LowerCall(CallLoweringInfo &CLI,
+                    SmallVectorImpl<SDValue> &InVals) const override;
+  SDValue LowerCallResult(SDValue Chain, SDValue InFlag,
+                          CallingConv::ID CallConv, bool IsVarArg,
+                          const SmallVectorImpl<ISD::InputArg> &Ins,
+                          const SDLoc &DL, SelectionDAG &DAG,
+                          SmallVectorImpl<SDValue> &InVals,
+                          const SDNode *CallNode, const Type *RetTy) const;
+  SDValue passArgOnStack(SDValue StackPtr, unsigned Offset, SDValue Chain,
+                         SDValue Arg, const SDLoc &DL, bool IsTailCall,
+                         SelectionDAG &DAG) const;
+  virtual void getOpndList(SmallVectorImpl<SDValue> &Ops,
+                           std::deque<std::pair<Register, SDValue>> &RegsToPass,
+                           bool GlobalOrExternal, bool InternalLinkage,
+                           CallLoweringInfo &CLI, SDValue Callee,
+                           SDValue Chain) const;
 
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
                                bool IsVarArg,

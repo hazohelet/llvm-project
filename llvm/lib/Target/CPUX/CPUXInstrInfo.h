@@ -33,6 +33,16 @@ public:
   void loadImmediate(int32_t Imm, MachineBasicBlock &MBB,
                      MachineBasicBlock::iterator II, const DebugLoc &DL,
                      MCRegister DstReg) const;
+  void storeRegToStackSlot(MachineBasicBlock &MBB,
+                           MachineBasicBlock::iterator MBBI, Register SrcReg,
+                           bool IsKill, int FI, const TargetRegisterClass *RC,
+                           const TargetRegisterInfo *TRI,
+                           Register VReg) const override;
+  void loadRegFromStackSlot(MachineBasicBlock &MBB,
+                            MachineBasicBlock::iterator I, Register DestReg,
+                            int FI, const TargetRegisterClass *RC,
+                            const TargetRegisterInfo *TRI,
+                            Register VReg) const override;
 };
 } // namespace llvm
 

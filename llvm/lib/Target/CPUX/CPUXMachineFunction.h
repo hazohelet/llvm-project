@@ -11,18 +11,29 @@
 namespace llvm {
 class CPUXFunctionInfo : public MachineFunctionInfo {
 public:
-  CPUXFunctionInfo(MachineFunction &MF) : MF(MF), VarArgsFrameIndex(0) {}
+  CPUXFunctionInfo(const Function &F, const TargetSubtargetInfo *STI) {}
 
   ~CPUXFunctionInfo();
 
   int getVarArgsFrameIndex() const { return VarArgsFrameIndex; }
   void setVarArgsFrameIndex(int Index) { VarArgsFrameIndex = Index; }
 
+  bool HasByvalArg;
+  unsigned IncomingArgSize;
+
+  void setFormalArgInfo(unsigned Size, bool HasByval) {
+    IncomingArgSize = Size;
+    HasByvalArg = HasByval;
+  }
+
+  unsigned getIncomingArgSize() const { return IncomingArgSize; }
+  bool hasByvalArg() const { return HasByvalArg; }
+  MachineFunctionInfo *
+  clone(BumpPtrAllocator &Allocator, MachineFunction &DestMF,
+        const DenseMap<MachineBasicBlock *, MachineBasicBlock *> &Src2DstMBB)
+      const override;
+
 private:
-  virtual void anchor();
-
-  MachineFunction &MF;
-
   int VarArgsFrameIndex;
 };
 } // namespace llvm

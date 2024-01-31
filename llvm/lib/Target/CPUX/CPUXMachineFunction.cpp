@@ -12,4 +12,9 @@ bool FixGlobalBaseReg;
 
 CPUXFunctionInfo::~CPUXFunctionInfo() {}
 
-void CPUXFunctionInfo::anchor() {}
+MachineFunctionInfo *
+CPUXFunctionInfo::clone(BumpPtrAllocator &Allocator, MachineFunction &DestMF,
+                        const DenseMap<MachineBasicBlock *, MachineBasicBlock *>
+                            &Src2DstMBB) const {
+  return DestMF.cloneInfo<CPUXFunctionInfo>(*this);
+}

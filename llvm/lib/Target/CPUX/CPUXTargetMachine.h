@@ -39,6 +39,10 @@ public:
     return TLOF.get();
   }
   const CPUXABIInfo &getABI() const { return ABI; }
+
+  MachineFunctionInfo *
+  createMachineFunctionInfo(BumpPtrAllocator &Allocator, const Function &F,
+                            const TargetSubtargetInfo *STI) const override;
 };
 
 } // namespace llvm

@@ -231,6 +231,10 @@ SDValue CPUXTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   // how many bytes are to be pushed on the stack.
   unsigned NextStackOffset = CCInfo.getNextStackOffset();
 
+  if (IsTailCall)
+    IsTailCall = isEligibleForTailCallOptimization(
+        CCInfo, NextStackOffset, *MF.getInfo<CPUXFunctionInfo>());
+
   unsigned StackAlignment = TFL->getStackAlignment();
   NextStackOffset = alignTo(NextStackOffset, StackAlignment);
   SDValue NextStackOffsetVal =
@@ -293,6 +297,8 @@ SDValue CPUXTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
   getOpndList(Ops, RegsToPass, /*GlobalOrExternal=*/false,
               /*InternalLinkage=*/false, CLI, Callee, Chain);
+  if (IsTailCall)
+    return DAG.getNode(CPUXISD::TailCall, DL, MVT::Other, Ops);
 
   Chain = DAG.getNode(CPUXISD::CALL, DL, NodeTys, Ops);
   SDValue InFlag = Chain.getValue(1);
@@ -390,6 +396,9 @@ SDValue CPUXTargetLowering::LowerFormalArguments(
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
   CCInfo.AnalyzeFormalArguments(Ins, CC_CPUX);
+
+  CPUXFI->setFormalArgInfo(CCInfo.getNextStackOffset(),
+                           CCInfo.getInRegsParamsCount() > 0);
 
   auto FuncArg = DAG.getMachineFunction().getFunction().arg_begin();
 
@@ -491,4 +500,12 @@ CPUXTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   }
 
   return DAG.getNode(CPUXISD::Ret, DL, MVT::Other, RetOps);
+}
+
+bool CPUXTargetLowering::isEligibleForTailCallOptimization(
+    CCState &CCInfo, unsigned NextStackOffset,
+    const CPUXFunctionInfo &FI) const {
+  if (CCInfo.getInRegsParamsCount() > 0 || FI.hasByvalArg())
+    return false;
+  return NextStackOffset <= FI.getIncomingArgSize();
 }

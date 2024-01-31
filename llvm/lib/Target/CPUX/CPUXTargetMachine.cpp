@@ -1,6 +1,7 @@
 #include "CPUXTargetMachine.h"
 #include "CPUX.h"
 #include "CPUXISelDAGToDAG.h"
+#include "CPUXMachineFunction.h"
 #include "CPUXTargetObjectFile.h"
 
 #include "llvm/CodeGen/Passes.h"
@@ -66,4 +67,10 @@ TargetPassConfig *CPUXTargetMachine::createPassConfig(PassManagerBase &PM) {
 bool CPUXPassConfig::addInstSelector() {
   addPass(createCPUXISelDag(getCPUXTargetMachine(), getOptLevel()));
   return false;
+}
+
+MachineFunctionInfo *CPUXTargetMachine::createMachineFunctionInfo(
+    BumpPtrAllocator &Allocator, const Function &F,
+    const TargetSubtargetInfo *STI) const {
+  return CPUXFunctionInfo::create<CPUXFunctionInfo>(Allocator, F, STI);
 }

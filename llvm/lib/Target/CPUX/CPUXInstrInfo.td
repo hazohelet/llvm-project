@@ -14,6 +14,9 @@ def SDT_CPUXSelectCC : SDTypeProfile<1, 5, [SDTCisSameAs<1, 2>,
 def CPUXRet : SDNode<"CPUXISD::Ret", SDTNone,
   [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 
+def CPUXTailCall : SDNode<"CPUXISD::TailCall", SDT_CPUXCall,
+                          [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue, SDNPVariadic]>;
+
 def SelectCC : SDNode<"CPUXISD::SELECT_CC", SDT_CPUXSelectCC, [SDNPInGlue]>;
 
 def SDT_CPUXCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
@@ -160,6 +163,12 @@ class StoreMemory<bits<7> opcode, bits<3> funct3, string instr_asm,
     !strconcat(instr_asm, "  $rs2, ${simm12}(${rs1})"),
     [], IIStore>;
 
+let isCall = 1, isTerminator = 1, isReturn = 1, isBarrier = 1, hasDelaySlot = 0,
+    hasExtraSrcRegAllocReq = 1 in {
+  def PseudoTAILCALL : CPUXPseudo<(outs), (ins call_symbol:$target),
+      "tail $target", []>;
+}
+
 class AlignedLoad<PatFrag Node> :
   PatFrag<(ops node:$ptr), (Node node:$ptr), [{
   LoadSDNode *LD = cast<LoadSDNode>(N);
@@ -236,6 +245,9 @@ let isCall = 1, Defs = [RA], isCodeGenOnly = 0 in {
 }
 def : Pat<(CPUXCall tglobaladdr:$func),  (PseudoCALL tglobaladdr:$func)>;
 def : Pat<(CPUXCall texternalsym:$func), (PseudoCALL texternalsym:$func)>;
+
+def : Pat<(CPUXTailCall tglobaladdr:$dst),  (PseudoTAILCALL tglobaladdr:$dst)>;
+def : Pat<(CPUXTailCall texternalsym:$dst), (PseudoTAILCALL texternalsym:$dst)>;
 
 def ADDI: ArithLogicI<0b0010011, 0b000, "addi", add, simm12, GPR>;
 def XORI: ArithLogicI<0b0010011, 0b100, "xori", xor, simm12, GPR>;

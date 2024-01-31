@@ -111,6 +111,9 @@ private:
                               MachineBasicBlock *BB) const override;
   static MachineBasicBlock *emitSelectPseudo(MachineInstr &MI,
                                              MachineBasicBlock *BB);
+  bool isEligibleForTailCallOptimization(CCState &CCInfo,
+                                         unsigned NextStackOffset,
+                                         const CPUXFunctionInfo &FI) const;
 };
 } // namespace llvm
 

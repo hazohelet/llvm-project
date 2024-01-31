@@ -36,8 +36,15 @@ void CPUXInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 
   MachineFunction *MF = MBB.getParent();
   MachineFrameInfo &MFI = MF->getFrameInfo();
-  // Currently only support int32_t, so lw
-  unsigned Opcode = CPUX::SW;
+
+  unsigned Opcode;
+  if (CPUX::GPRRegClass.hasSubClassEq(RC))
+    Opcode = CPUX::SW;
+  else if (CPUX::FPRRegClass.hasSubClassEq(RC))
+    Opcode = CPUX::FSW;
+  else
+    llvm_unreachable("Cannot store this register class");
+
   MachineMemOperand *MMO = MF->getMachineMemOperand(
       MachinePointerInfo::getFixedStack(*MF, FI), MachineMemOperand::MOStore,
       MFI.getObjectSize(FI), MFI.getObjectAlign(FI));
@@ -60,8 +67,15 @@ void CPUXInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 
   MachineFunction *MF = MBB.getParent();
   MachineFrameInfo &MFI = MF->getFrameInfo();
-  // Currently only support int32_t, so lw
-  unsigned Opcode = CPUX::LW;
+
+  unsigned Opcode;
+  if (CPUX::GPRRegClass.hasSubClassEq(RC))
+    Opcode = CPUX::LW;
+  else if (CPUX::FPRRegClass.hasSubClassEq(RC))
+    Opcode = CPUX::FLW;
+  else
+    llvm_unreachable("Cannot load this register class");
+
   MachineMemOperand *MMO = MF->getMachineMemOperand(
       MachinePointerInfo::getFixedStack(*MF, FI), MachineMemOperand::MOLoad,
       MFI.getObjectSize(FI), MFI.getObjectAlign(FI));

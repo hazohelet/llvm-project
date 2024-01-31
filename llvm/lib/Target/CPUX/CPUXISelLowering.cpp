@@ -59,6 +59,7 @@ CPUXTargetLowering::CPUXTargetLowering(const CPUXTargetMachine &TM,
   MVT XLenVT = MVT::i32;
 
   addRegisterClass(XLenVT, &CPUX::GPRRegClass);
+  addRegisterClass(MVT::f32, &CPUX::FPRRegClass);
 
   setMinFunctionAlignment(Align(4));
   computeRegisterProperties(STI.getRegisterInfo());

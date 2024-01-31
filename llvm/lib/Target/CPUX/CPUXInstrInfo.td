@@ -172,7 +172,7 @@ let isCall = 1, isTerminator = 1, isReturn = 1, isBarrier = 1, hasDelaySlot = 0,
 class AlignedLoad<PatFrag Node> :
   PatFrag<(ops node:$ptr), (Node node:$ptr), [{
   LoadSDNode *LD = cast<LoadSDNode>(N);
-  return LD->getMmoeryVT().getSizeInBits() / 8 <= LD->getAlignment();
+  return LD->getMemoryVT().getSizeInBits() / 8 <= LD->getAlignment();
 }]>;
 
 class AlignedStore<PatFrag Node> :
@@ -387,3 +387,4 @@ def : Pat<(brcond (i32 (setuge GPR:$lhs, GPR:$rhs)), bb:$dst),
 def : Pat<(brcond GPR:$cond, bb:$dst),
         (BNE GPR:$cond, ZERO, bb:$dst)>;
 
+include "CPUXInstrInfoF.td"

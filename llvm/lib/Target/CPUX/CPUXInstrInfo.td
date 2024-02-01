@@ -232,6 +232,7 @@ class SelectCC_rrirr<RegisterClass RC, RegisterClass cmpty>
     [(set RC:$dst, (SelectCC cmpty:$lhs, cmpty:$rhs, (i32 imm:$imm), RC:$truev, RC:$falsev))]>;
 
 def Select_GPR_Using_CC_GPR : SelectCC_rrirr<GPR, GPR>;
+def Select_GPR_Using_CC_FPR : SelectCC_rrirr<FPR, GPR>;
 
 let Defs = [SP], Uses = [SP], hasSideEffects = 1 in {
   def ADJCALLSTACKDOWN : CPUXPseudo<(outs), (ins simm12:$amt1, simm12:$amt2), "",

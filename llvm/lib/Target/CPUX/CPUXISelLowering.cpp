@@ -77,6 +77,7 @@ CPUXTargetLowering::CPUXTargetLowering(const CPUXTargetMachine &TM,
   setOperationAction(ISD::SELECT_CC, XLenVT, Expand);
 
   setOperationAction(ISD::BR_CC, MVT::f32, Expand);
+  setOperationAction(ISD::SELECT, MVT::f32, Custom);
   setOperationAction(ISD::SELECT_CC, MVT::f32, Expand);
 
   // Don't use table jump
@@ -233,6 +234,7 @@ CPUXTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   default:
     llvm_unreachable("Unexpected instr type to insert");
   case CPUX::Select_GPR_Using_CC_GPR:
+  case CPUX::Select_GPR_Using_CC_FPR:
     return emitSelectPseudo(MI, BB);
   }
 }

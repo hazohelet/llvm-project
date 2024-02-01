@@ -76,6 +76,9 @@ CPUXTargetLowering::CPUXTargetLowering(const CPUXTargetMachine &TM,
   setOperationAction(ISD::SELECT, XLenVT, Custom);
   setOperationAction(ISD::SELECT_CC, XLenVT, Expand);
 
+  setOperationAction(ISD::BR_CC, MVT::f32, Expand);
+  setOperationAction(ISD::SELECT_CC, MVT::f32, Expand);
+
   // Don't use table jump
   setMinimumJumpTableEntries(INT_MAX);
 }

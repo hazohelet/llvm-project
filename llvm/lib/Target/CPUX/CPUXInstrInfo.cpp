@@ -98,6 +98,12 @@ void CPUXInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
         .addImm(0);
     return;
   }
+  if (CPUX::FPRRegClass.contains(DstReg, SrcReg)) {
+    BuildMI(MBB, MBBI, DL, get(CPUX::FSIGNJ), DstReg)
+        .addReg(SrcReg, getKillRegState(KillSrc))
+        .addReg(SrcReg, getKillRegState(KillSrc));
+    return;
+  }
   llvm_unreachable("Floating point yet to be implemented");
 }
 bool CPUXInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {

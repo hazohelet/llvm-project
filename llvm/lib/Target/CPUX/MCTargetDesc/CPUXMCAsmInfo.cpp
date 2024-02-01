@@ -9,7 +9,7 @@ void CPUXMCAsmInfo::anchor() {}
 CPUXMCAsmInfo::CPUXMCAsmInfo(const Triple &TheTriple) {
   AlignmentIsInBytes = true;
   Data16bitsDirective = "  .2byte  ";
-  Data32bitsDirective = "  .4byte  ";
+  Data32bitsDirective = "  .word  ";
   Data64bitsDirective = "  .8byte  ";
   PrivateGlobalPrefix = ".";
   PrivateLabelPrefix = ".";

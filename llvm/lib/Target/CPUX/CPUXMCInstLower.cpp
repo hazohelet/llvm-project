@@ -60,6 +60,10 @@ MCOperand CPUXMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
   case MachineOperand::MO_JumpTableIndex:
     Symbol = AsmPrinter.GetJTISymbol(MO.getIndex());
     break;
+  case MachineOperand::MO_ConstantPoolIndex:
+    Symbol = AsmPrinter.GetCPISymbol(MO.getIndex());
+    Offset += MO.getOffset();
+    break;
   }
 
   const MCExpr *Expr = MCSymbolRefExpr::create(Symbol, Kind, *Ctx);
@@ -93,6 +97,7 @@ MCOperand CPUXMCInstLower::LowerOperand(const MachineOperand &MO,
   case MachineOperand::MO_BlockAddress:
   case MachineOperand::MO_JumpTableIndex:
   case MachineOperand::MO_GlobalAddress:
+  case MachineOperand::MO_ConstantPoolIndex:
     return LowerSymbolOperand(MO, MOTy, offset);
   case MachineOperand::MO_RegisterMask:
     break;

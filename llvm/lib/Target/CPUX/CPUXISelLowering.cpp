@@ -81,6 +81,9 @@ CPUXTargetLowering::CPUXTargetLowering(const CPUXTargetMachine &TM,
 
   // Don't use table jump
   setMinimumJumpTableEntries(INT_MAX);
+
+  setOperationAction(ISD::ConstantPool, MVT::i32, Custom);
+  setOperationAction(ISD::ConstantPool, MVT::f32, Custom);
 }
 
 static unsigned addLiveIn(MachineFunction &MF, unsigned PReg,
@@ -99,6 +102,8 @@ SDValue CPUXTargetLowering::LowerOperation(SDValue Op,
     return lowerSELECT(Op, DAG);
   case ISD::GlobalAddress:
     return lowerGlobalAddress(Op, DAG);
+  case ISD::ConstantPool:
+    return lowerConstantPool(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
@@ -133,10 +138,32 @@ SDValue CPUXTargetLowering::lowerSELECT(SDValue Op, SelectionDAG &DAG) const {
   return DAG.getNode(CPUXISD::SELECT_CC, DL, VTs, Ops);
 }
 
+SDValue CPUXTargetLowering::lowerConstantPool(SDValue Op,
+                                              SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  auto *N = cast<ConstantPoolSDNode>(Op);
+  int64_t Offset = N->getOffset();
+
+  SDValue Addr = getAddrStatic(N, Ty, DAG);
+  if (Offset != 0) {
+    return DAG.getNode(ISD::ADD, DL, Ty, Addr,
+                       DAG.getConstant(Offset, DL, MVT::i32));
+  }
+  return Addr;
+}
+
 SDValue CPUXTargetLowering::getTargetNode(GlobalAddressSDNode *N, EVT Ty,
                                           SelectionDAG &DAG,
                                           unsigned Flag) const {
   return DAG.getTargetGlobalAddress(N->getGlobal(), SDLoc(N), Ty, 0, Flag);
+}
+
+SDValue CPUXTargetLowering::getTargetNode(ConstantPoolSDNode *N, EVT Ty,
+                                          SelectionDAG &DAG,
+                                          unsigned Flag) const {
+  return DAG.getTargetConstantPool(N->getConstVal(), Ty, N->getAlign(),
+                                   N->getOffset(), Flag);
 }
 
 unsigned CPUXTargetLowering::getBranchOpcodeForIntCondCode(ISD::CondCode CC) {

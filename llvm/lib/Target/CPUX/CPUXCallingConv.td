@@ -17,12 +17,6 @@ def CC_LP32 : CallingConv<[
   CCIfType<[f32], CCAssignToStack<4, 4>>
 ]>;
 
-def CC_STACK32 : CallingConv<[
-  CCIfType<[i1, i8, i16], CCPromoteToType<i32>>,
-  // stack-located arguments are aligned to 4 bytes
-  CCIfType<[i32], CCAssignToStack<4, 4>>
-]>;
-
 def CC_CPUX : CallingConv<[
   CCDelegateTo<CC_LP32>
 ]>;

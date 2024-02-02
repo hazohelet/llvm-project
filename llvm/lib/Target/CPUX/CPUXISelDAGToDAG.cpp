@@ -43,7 +43,6 @@ void CPUXDAGToDAGISel::Select(SDNode *Node) {
   unsigned Opcode = Node->getOpcode();
   MVT XLenVT = MVT::i32;
   SDLoc DL(Node);
-  EVT VT = Node->getValueType(0);
 
   LLVM_DEBUG(errs() << "Selecting: "; Node->dump(CurDAG); errs() << "\n");
 

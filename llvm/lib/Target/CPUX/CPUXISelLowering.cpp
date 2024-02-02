@@ -385,8 +385,8 @@ SDValue CPUXTargetLowering::passArgOnStack(SDValue StackPtr, unsigned Offset,
   int FI = MFI.CreateFixedObject(Arg.getValueSizeInBits() / 8, Offset,
                                  /*IsImmutable=*/false);
   SDValue FIN = DAG.getFrameIndex(FI, getPointerTy(DAG.getDataLayout()));
-  return DAG.getStore(Chain, DL, Arg, FIN, MachinePointerInfo(),
-                      /*Alignment=*/0, MachineMemOperand::MOVolatile);
+  return DAG.getStore(Chain, DL, Arg, FIN, MachinePointerInfo(), MaybeAlign(),
+                      MachineMemOperand::MOVolatile);
 }
 
 void CPUXTargetLowering::getOpndList(

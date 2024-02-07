@@ -6,6 +6,11 @@ class FPCompDestR<bits<7> opcode, bits<3> funct3, bits<7> funct7,
   let isReMaterializable = 1;
 }
 
+def SDT_CPUXFHalf
+    : SDTypeProfile<1, 1, [SDTCisVT<0, f32>, SDTCisVT<1, f32>]>;
+def CPUXFHalf: SDNode<"CPUXISD::FHalf", SDT_CPUXFHalf>;
+
+
 def FLW : LoadMemory <0b0000111, 0b010, "flw", FPR>;
 def FSW : StoreMemory<0b0000111, 0b010, "fsw", FPR>;
 
@@ -36,10 +41,15 @@ def FSIGNJ  : FPTwoOp<0b1010011, 0b000, 0b0010000, "fsgnj.s">;
 def FSIGNJN : FPTwoOp<0b1010011, 0b001, 0b0010000, "fsgnjn.s">;
 def FSIGNJX : FPTwoOp<0b1010011, 0b010, 0b0010000, "fsgnjx.s">;
 def FSQRT : FPSingleOp<0b1010011, 0b000, 0b0101100, "fsqrt.s", FPR, FPR>;
+def FHALF : FPSingleOp<0b1010011, 0b000, 0b0101100, "fhalf.s", FPR, FPR>;
+def FFLOOR: FPSingleOp<0b1110111, 0b010, 0b0111100, "ffloor.s", FPR, FPR>;
 def FCVTWS: FPSingleOp<0b1010011, 0b000, 0b1100000, "fcvt.w.s", GPR, FPR>;
 def FCVTSW: FPSingleOp<0b1010011, 0b000, 0b1101000, "fcvt.s.w", FPR, GPR>;
 
+def : Pat<(CPUXFHalf FPR:$rs1),  (FHALF $rs1)>;
+
 def : Pat<(fsqrt FPR:$rs1), (FSQRT $rs1)>;
+def : Pat<(f32 (ffloor FPR:$rs1)), (FFLOOR $rs1)>;
 def : Pat<(fneg  FPR:$rs1), (FSIGNJN $rs1, $rs1)>;
 def : Pat<(fabs  FPR:$rs1), (FSIGNJX $rs1, $rs1)>;
 def : InstAlias<"fmv.s  $rd, $rs1", (FSIGNJ  FPR:$rd, FPR:$rs1, FPR:$rs1)>;

@@ -48,6 +48,8 @@ const char *CPUXTargetLowering::getTargetNodeName(unsigned Opcode) const {
     return "CPUXISD::Wrapper";
   case CPUXISD::SELECT_CC:
     return "CPUXISD::SELECT_CC";
+  case CPUXISD::FHalf:
+    return "CPUXISD::FHalf";
   default:
     return NULL;
   }
@@ -80,6 +82,10 @@ CPUXTargetLowering::CPUXTargetLowering(const CPUXTargetMachine &TM,
   setOperationAction(ISD::SELECT, MVT::f32, Custom);
   setOperationAction(ISD::SELECT_CC, MVT::f32, Expand);
 
+  setOperationAction(ISD::FFLOOR, MVT::f32, Legal);
+  setOperationAction(ISD::FDIV, MVT::f32, Custom);
+  setOperationAction(ISD::FMUL, MVT::f32, Custom);
+
   // Don't use table jump
   setMinimumJumpTableEntries(INT_MAX);
 
@@ -96,9 +102,17 @@ static unsigned addLiveIn(MachineFunction &MF, unsigned PReg,
 
 #include "CPUXGenCallingConv.inc"
 
+static bool isConstantFPValue(SDValue Op, float Value) {
+  ConstantFPSDNode *C = dyn_cast<ConstantFPSDNode>(Op.getNode());
+  return C && C->isExactlyValue(Value);
+}
 SDValue CPUXTargetLowering::LowerOperation(SDValue Op,
                                            SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
+  case ISD::FDIV:
+    return lowerFDIV(Op, DAG);
+  case ISD::FMUL:
+    return lowerFMUL(Op, DAG);
   case ISD::SELECT:
     return lowerSELECT(Op, DAG);
   case ISD::GlobalAddress:
@@ -110,6 +124,27 @@ SDValue CPUXTargetLowering::LowerOperation(SDValue Op,
   }
 }
 
+SDValue CPUXTargetLowering::lowerFDIV(SDValue Op, SelectionDAG &DAG) const {
+  SDValue Operand2 = Op.getOperand(1);
+  if (isConstantFPValue(Operand2, 2.0)) {
+    SDLoc DL(Op);
+    SDValue Operand1 = Op.getOperand(0);
+    return DAG.getNode(CPUXISD::FHalf, DL, Op.getValueType(), Operand1);
+  }
+  return DAG.getNode(ISD::FDIV, SDLoc(Op), Op.getValueType(), Op.getOperand(0),
+                     Op.getOperand(1));
+}
+
+SDValue CPUXTargetLowering::lowerFMUL(SDValue Op, SelectionDAG &DAG) const {
+  SDValue Operand2 = Op.getOperand(1);
+  if (isConstantFPValue(Operand2, 0.5)) {
+    SDLoc DL(Op);
+    SDValue Operand1 = Op.getOperand(0);
+    return DAG.getNode(CPUXISD::FHalf, DL, Op.getValueType(), Operand1);
+  }
+  return DAG.getNode(ISD::FMUL, SDLoc(Op), Op.getValueType(), Op.getOperand(0),
+                     Op.getOperand(1));
+}
 SDValue CPUXTargetLowering::lowerGlobalAddress(SDValue Op,
                                                SelectionDAG &DAG) const {
   // Our CPU only supports static relocation model

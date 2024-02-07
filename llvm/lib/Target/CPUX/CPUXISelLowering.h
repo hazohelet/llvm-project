@@ -16,6 +16,7 @@ enum NodeType : unsigned {
   FIRST_NUMBER = ISD::BUILTIN_OP_END,
   CALL,
   TailCall,
+  FHalf,
   // Obtain higher 16 bits - not related to %hi
   Hi,
   // Obtain lower 16 bits - not related to %lo
@@ -79,6 +80,8 @@ private:
   SDValue lowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerSELECT(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerFDIV(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerFMUL(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerCall(CallLoweringInfo &CLI,
                     SmallVectorImpl<SDValue> &InVals) const override;

@@ -206,6 +206,8 @@ class CBranch12<bits<7> opcode, bits<3> funct3,
 }
 
 def BEQ  : CBranch12<0b1100011, 0b000, "beq", GPR>;
+def BEQTWO: CBranch12<0b1100011, 0b000, "beq.two", GPR>;
+def BEQ99: CBranch12<0b1100011, 0b000, "beq.nn", GPR>;
 def BNE  : CBranch12<0b1100011, 0b001, "bne", GPR>;
 def BLT  : CBranch12<0b1100011, 0b100, "blt", GPR>;
 def BGE  : CBranch12<0b1100011, 0b101, "bge", GPR>;
@@ -376,6 +378,11 @@ def : Pat<(brcond (i32 (setne GPR:$lhs, 0)), bb:$dst),
         (BNE GPR:$lhs, ZERO, bb:$dst)>;
 def : Pat<(brcond (i32 (seteq GPR:$lhs, 0)), bb:$dst),
         (BEQ GPR:$lhs, ZERO, bb:$dst)>;
+
+def : Pat<(brcond (i32 (seteq GPR:$lhs, 2)), bb:$dst),
+        (BEQTWO GPR:$lhs, ZERO, bb:$dst)>;
+def : Pat<(brcond (i32 (seteq GPR:$lhs, 99)), bb:$dst),
+        (BEQ99 GPR:$lhs, ZERO, bb:$dst)>;
 
 def : Pat<(brcond (i32 (seteq GPR:$lhs, GPR:$rhs)), bb:$dst),
         (BEQ GPR:$lhs, GPR:$rhs, bb:$dst)>;

@@ -206,8 +206,8 @@ class CBranch12<bits<7> opcode, bits<3> funct3,
 }
 
 def BEQ  : CBranch12<0b1100011, 0b000, "beq", GPR>;
-def BEQTWO: CBranch12<0b1100011, 0b000, "beq.two", GPR>;
-def BEQ99: CBranch12<0b1100011, 0b000, "beq.nn", GPR>;
+def BEQTWO: CBranch12<0b1100011, 0b000, "beq.2", GPR>;
+def BEQ99: CBranch12<0b1100011, 0b000, "beq.99", GPR>;
 def BNE  : CBranch12<0b1100011, 0b001, "bne", GPR>;
 def BLT  : CBranch12<0b1100011, 0b100, "blt", GPR>;
 def BGE  : CBranch12<0b1100011, 0b101, "bge", GPR>;

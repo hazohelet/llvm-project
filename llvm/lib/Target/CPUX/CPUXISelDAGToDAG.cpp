@@ -43,6 +43,7 @@ void CPUXDAGToDAGISel::Select(SDNode *Node) {
   unsigned Opcode = Node->getOpcode();
   MVT XLenVT = MVT::i32;
   SDLoc DL(Node);
+  MVT VT = Node->getSimpleValueType(0);
 
   LLVM_DEBUG(errs() << "Selecting: "; Node->dump(CurDAG); errs() << "\n");
 
@@ -55,6 +56,40 @@ void CPUXDAGToDAGISel::Select(SDNode *Node) {
   switch (Opcode) {
   default:
     break;
+  case ISD::Constant: {
+    auto *ConstNode = cast<ConstantSDNode>(Node);
+    if (VT == XLenVT && ConstNode->isZero()) {
+      SDValue New = CurDAG->getCopyFromReg(CurDAG->getEntryNode(), DL,
+                                           CPUX::ZERO, XLenVT);
+      ReplaceNode(Node, New.getNode());
+      return;
+    }
+    break;
+  }
+  case ISD::AND: {
+    auto *N1C = dyn_cast<ConstantSDNode>(Node->getOperand(1));
+    if (!N1C)
+      break;
+    auto *N0 = Node->getOperand(0).getNode();
+    // if N0 is a bool-returning stuff such as xor or seteq, we can remove andi
+    // node with immediate 1
+    bool N0IsBool = false;
+    switch (N0->getOpcode()) {
+    default:
+      break;
+    case ISD::AND:
+    case ISD::OR:
+    case ISD::XOR:
+    case ISD::SETCC:
+      N0IsBool = true;
+      break;
+    }
+    if (N0IsBool && N1C->getAPIntValue() == 1) {
+      ReplaceNode(Node, Node->getOperand(0).getNode());
+      return;
+    }
+    break;
+  }
   case ISD::FrameIndex: {
     SDValue Imm = CurDAG->getTargetConstant(0, DL, XLenVT);
     int32_t FI = cast<FrameIndexSDNode>(Node)->getIndex();

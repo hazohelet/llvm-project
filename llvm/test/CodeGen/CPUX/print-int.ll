@@ -34,8 +34,7 @@ define void @print_int(i32 %0) {
 ; CHECK-NEXT:.BB2_1:
 ; CHECK-NEXT:  li   a0, 45
 ; CHECK-NEXT:  call mincaml_print_char
-; CHECK-NEXT:  li   a0, 0
-; CHECK-NEXT:  sub  s1, a0, s1
+; CHECK-NEXT:  sub  s1, zero, s1
 ; CHECK-NEXT:.BB2_2:
 ; CHECK-NEXT:  li   a0, 900
 ; CHECK-NEXT:  blt  s1, a0, .BB2_4

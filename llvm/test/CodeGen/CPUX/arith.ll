@@ -95,7 +95,6 @@ define i32 @equal(i32 %0, i32 %1) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:  xor  a0, a0, a1
 ; CHECK-NEXT:  seqz  a0, a0
-; CHECK-NEXT:  andi  a0, a0, 1
 ; CHECK-NEXT:  ret
   %3 = icmp eq i32 %0, %1
   %4 = zext i1 %3 to i32
@@ -108,7 +107,6 @@ define i32 @not_equal(i32 %0, i32 %1) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:  xor  a0, a0, a1
 ; CHECK-NEXT:  snez  a0, a0
-; CHECK-NEXT:  andi  a0, a0, 1
 ; CHECK-NEXT:  ret
   %3 = icmp ne i32 %0, %1
   %4 = zext i1 %3 to i32
@@ -120,7 +118,6 @@ define i32 @less(i32 %0, i32 %1) {
 ; CHECK-LABEL: less:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:  slt  a0, a0, a1
-; CHECK-NEXT:  andi  a0, a0, 1
 ; CHECK-NEXT:  ret
   %3 = icmp slt i32 %0, %1
   %4 = zext i1 %3 to i32
@@ -132,7 +129,6 @@ define i32 @greater(i32 %0, i32 %1) {
 ; CHECK-LABEL: greater:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:  slt  a0, a1, a0
-; CHECK-NEXT:  andi  a0, a0, 1
 ; CHECK-NEXT:  ret
   %3 = icmp sgt i32 %0, %1
   %4 = zext i1 %3 to i32
@@ -145,7 +141,6 @@ define i32 @less_equal(i32 %0, i32 %1) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:  slt  a0, a1, a0
 ; CHECK-NEXT:  xori  a0, a0, 1
-; CHECK-NEXT:  andi  a0, a0, 1
 ; CHECK-NEXT:  ret
   %3 = icmp sle i32 %0, %1
   %4 = zext i1 %3 to i32
@@ -158,7 +153,6 @@ define i32 @greater_equal(i32 %0, i32 %1) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:  slt  a0, a0, a1
 ; CHECK-NEXT:  xori  a0, a0, 1
-; CHECK-NEXT:  andi  a0, a0, 1
   %3 = icmp sge i32 %0, %1
   %4 = zext i1 %3 to i32
   ret i32 %4

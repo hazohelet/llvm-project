@@ -3,8 +3,8 @@
 define i32 @arr_sum(i32 %0, ptr %1) {
 ; CHECK-LABEL: arr_sum:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT: 	li	 a2, 0
 ; CHECK-NEXT: 	li	 a3, 1
+; CHECK-NEXT: 	li	 a2, 0
 ; CHECK-NEXT: 	blt  a0, a3, .BB0_2
 ; CHECK-NEXT: 	j	.BB0_1
 ; CHECK-NEXT: .BB0_1:
@@ -42,7 +42,6 @@ define i32 @is_even(i32 %0) {
 ; CHECK-LABEL: is_even:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:   xori  a0, a0, -1
-; CHECK-NEXT:   andi  a0, a0, 1
 ; CHECK-NEXT:   ret
   %2 = and i32 %0, 1
   %3 = xor i32 %2, 1
@@ -57,7 +56,6 @@ define i32 @is_odd(i32 %0) {
 ; CHECK-NEXT:  	and  a0, a0, a1
 ; CHECK-NEXT:  	addi  a0, a0, -1
 ; CHECK-NEXT:  	seqz	 a0, a0
-; CHECK-NEXT:  	andi  a0, a0, 1
 ; CHECK-NEXT:  	ret
   %2 = and i32 %0, -2147483647
   %3 = icmp eq i32 %2, 1

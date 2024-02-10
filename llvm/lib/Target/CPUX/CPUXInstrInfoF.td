@@ -46,6 +46,28 @@ def FFLOOR: FPSingleOp<0b1110111, 0b010, 0b0111100, "ffloor.s", FPR, FPR>;
 def FCVTWS: FPSingleOp<0b1010011, 0b000, 0b1100000, "fcvt.w.s", GPR, FPR>;
 def FCVTSW: FPSingleOp<0b1010011, 0b000, 0b1101000, "fcvt.s.w", FPR, GPR>;
 
+def FMV_W_X: FPSingleOp<0b1010011, 0b000, 0b1111000, "fmv.w.x",FPR, GPR>;
+
+def FLIMM: ArithLogicU<0b0110111, "flimm", FPR, simm20u>;
+
+def fpimm0    : PatLeaf<(fpimm), [{ return N->isExactlyValue(0x0p+0); }]>;
+def fpimm1    : PatLeaf<(fpimm), [{ return N->isExactlyValue(0x1.47ae14p-7); }]>;
+def fpimm2    : PatLeaf<(fpimm), [{ return N->isExactlyValue(-0x1p+0); }]>;
+def fpimm3    : PatLeaf<(fpimm), [{ return N->isExactlyValue(-0x1.99999ap-3); }]>;
+def fpimm4    : PatLeaf<(fpimm), [{ return N->isExactlyValue(-0x1.99999ap-4); }]>;
+def fpimm5    : PatLeaf<(fpimm), [{ return N->isExactlyValue(0x1.7d784p+26); }]>;
+def fpimm6    : PatLeaf<(fpimm), [{ return N->isExactlyValue(0x1.2cp+7); }]>;
+def fpimm7    : PatLeaf<(fpimm), [{ return N->isExactlyValue(-0x1.2cp+7); }]>;
+
+def : Pat<(f32 (fpimm0)), (FLIMM 0x0000)>;
+def : Pat<(f32 (fpimm1)), (FLIMM 0x1000)>;
+def : Pat<(f32 (fpimm2)), (FLIMM 0x2000)>;
+def : Pat<(f32 (fpimm3)), (FLIMM 0x3000)>;
+def : Pat<(f32 (fpimm4)), (FLIMM 0x4000)>;
+def : Pat<(f32 (fpimm5)), (FLIMM 0x5000)>;
+def : Pat<(f32 (fpimm6)), (FLIMM 0x6000)>;
+def : Pat<(f32 (fpimm7)), (FLIMM 0x7000)>;
+
 def : Pat<(CPUXFHalf FPR:$rs1),  (FHALF $rs1)>;
 
 def : Pat<(fsqrt FPR:$rs1), (FSQRT $rs1)>;

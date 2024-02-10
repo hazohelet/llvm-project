@@ -89,6 +89,7 @@ CPUXTargetLowering::CPUXTargetLowering(const CPUXTargetMachine &TM,
   // Don't use table jump
   setMinimumJumpTableEntries(INT_MAX);
 
+  setOperationAction(ISD::ConstantFP, MVT::f32, Custom);
   setOperationAction(ISD::ConstantPool, MVT::i32, Custom);
   setOperationAction(ISD::ConstantPool, MVT::f32, Custom);
 }
@@ -119,6 +120,8 @@ SDValue CPUXTargetLowering::LowerOperation(SDValue Op,
     return lowerGlobalAddress(Op, DAG);
   case ISD::ConstantPool:
     return lowerConstantPool(Op, DAG);
+  case ISD::ConstantFP:
+    return lowerConstantFP(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
@@ -187,6 +190,25 @@ SDValue CPUXTargetLowering::lowerConstantPool(SDValue Op,
                        DAG.getConstant(Offset, DL, MVT::i32));
   }
   return Addr;
+}
+
+SDValue CPUXTargetLowering::lowerConstantFP(SDValue Op,
+                                            SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  auto *N = cast<ConstantFPSDNode>(Op);
+  float Value = N->getValueAPF().convertToFloat();
+  // Special-cased constants
+  if (Value == 0x0p+0 || Value == 0x1.47ae14p-7 || Value == -0x1p+0 ||
+      Value == -0x1.99999ap-3 || Value == -0x1.99999ap-4 ||
+      Value == 0x1.7d784p+26 || Value == 0x1.2cp+7 || Value == -0x1.2cp+7) {
+    return Op;
+  }
+  SDValue CPIdx = DAG.getConstantPool(
+      ConstantFP::get(Type::getFloatTy(*DAG.getContext()), Value),
+      getPointerTy(DAG.getDataLayout()), Align(4));
+  return DAG.getLoad(
+      MVT::f32, DL, DAG.getEntryNode(), CPIdx,
+      MachinePointerInfo::getConstantPool(DAG.getMachineFunction()));
 }
 
 SDValue CPUXTargetLowering::getTargetNode(GlobalAddressSDNode *N, EVT Ty,

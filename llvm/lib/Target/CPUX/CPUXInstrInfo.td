@@ -270,6 +270,7 @@ class GPTwoOp<bits<7> opcode, bits<3> rm, bits<7> funct7,
 def LUI: ArithLogicU<0b0110111, "lui", GPR, simm20u>;
 def ADD: ArithLogicR<0b0110011, 0b000, 0b0000000, "add", add, GPR>;
 def ADDSCALE: GPTwoOp<0b1010011, 0b000, 0b0010000, "add.scale">;
+def LWADD: GPTwoOp<0b1010011, 0b000, 0b0010000, "lw.add">;
 def SUB: ArithLogicR<0b0110011, 0b000, 0b0100000, "sub", sub, GPR>;
 
 def AND: ArithLogicR<0b0110011, 0b111, 0b0000000, "and", and, GPR>;
@@ -340,6 +341,7 @@ def : Pat<(add (i32 addr_fi:$rs1), simm12:$simm12),
 
 def : Pat<(load (add (shl GPR:$rs1, 2), simm12:$simm12))    , (LWTWO GPR:$rs1, simm12:$simm12)>;
 def : Pat<(load (add (shl GPR:$rs1, 6), simm12:$simm12))    , (LWSIX GPR:$rs1, simm12:$simm12)>;
+def : Pat<(load (add (shl GPR:$rs1, 2), GPR:$rs2))          , (LWADD GPR:$rs1, GPR:$rs2)>;
 
 multiclass LoadPattern<PatFrag LoadOp, CPUXInst Inst> {
   def : Pat<(LoadOp simm12:$simm12)                    , (Inst ZERO, simm12:$simm12)>;

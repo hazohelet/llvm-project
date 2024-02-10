@@ -81,10 +81,12 @@ def : InstAlias<"fabs.s $rd, $rs1", (FSIGNJX FPR:$rd, FPR:$rs1, FPR:$rs1)>;
 def : Pat<(fp_to_sint FPR:$rs1), (FCVTWS $rs1)>;
 def : Pat<(sint_to_fp GPR:$rs1), (FCVTSW $rs1)>;
 
+def FABSLE : FPCompDestR<0b1010011, 0b000, 0b1010001, "fabsle.s", setle>;
 def FLE : FPCompDestR<0b1010011, 0b000, 0b1010001, "fle.s", setle>;
 def FLT : FPCompDestR<0b1010011, 0b001, 0b1010001, "flt.s", setlt>;
 def FEQ : FPCompDestR<0b1010011, 0b010, 0b1010001, "feq.s", seteq>;
 
+def : Pat<(setole FPR:$rs1, (fabs  FPR:$rs2)), (FABSLE $rs1, $rs2)>;
 def : Pat<(setole FPR:$rs1, FPR:$rs2), (FLE $rs1, $rs2)>;
 def : Pat<(setogt FPR:$rs1, FPR:$rs2), (FLE $rs2, $rs1)>;
 def : Pat<(setolt FPR:$rs1, FPR:$rs2), (FLT $rs1, $rs2)>;

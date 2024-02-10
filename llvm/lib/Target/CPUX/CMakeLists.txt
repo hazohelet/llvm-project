@@ -23,6 +23,7 @@ add_llvm_target(CPUXCodeGen
   CPUXInstrInfo.cpp
   CPUXISelDAGToDAG.cpp
   CPUXISelLowering.cpp
+  CPUXMergeBaseOffset.cpp
   CPUXMachineFunction.cpp
   CPUXMCInstLower.cpp
   CPUXRegisterInfo.cpp

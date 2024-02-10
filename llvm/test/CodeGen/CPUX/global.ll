@@ -10,10 +10,9 @@ define void @update_glob_int() {
 ; CHECK-LABEL: update_glob_int:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:  lui  a0, %hi(glob_int)
-; CHECK-NEXT:  addi  a0, a0, %lo(glob_int)
-; CHECK-NEXT:  lw  a1, 0(a0)
+; CHECK-NEXT:  lw  a1, %lo(glob_int)(a0)
 ; CHECK-NEXT:  addi  a1, a1, 42
-; CHECK-NEXT:  sw  a1, 0(a0)
+; CHECK-NEXT:  sw  a1, %lo(glob_int)(a0)
 ; CHECK-NEXT:  ret
   %1 = load i32, ptr @glob_int, align 4
   %2 = add i32 %1, 42
@@ -24,11 +23,10 @@ define void @update_glob_int() {
 define void @update_glob_arr() {
 ; CHECK-LABEL: update_glob_arr:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:  lui  a0, %hi(glob_arr)
-; CHECK-NEXT:  addi  a0, a0, %lo(glob_arr)
-; CHECK-NEXT:  lw  a1, 8(a0)
+; CHECK-NEXT:  lui  a0, %hi(glob_arr+8)
+; CHECK-NEXT:  lw  a1, %lo(glob_arr+8)(a0)
 ; CHECK-NEXT:  addi  a1, a1, 52
-; CHECK-NEXT:  sw  a1, 8(a0)
+; CHECK-NEXT:  sw  a1, %lo(glob_arr+8)(a0)
 ; CHECK-NEXT:  ret
   %1 = load i32, ptr getelementptr inbounds ([3 x i32], ptr @glob_arr, i32 0, i32 2), align 4
   %2 = add i32 %1, 52

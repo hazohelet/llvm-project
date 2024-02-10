@@ -5,8 +5,9 @@
 #include "llvm/Target/TargetMachine.h"
 
 namespace llvm {
-  class CPUXTargetMachine;
-  class FunctionPass;
-}
+class CPUXTargetMachine;
+class FunctionPass;
+FunctionPass *createCPUXMergeBaseOffsetOptPass();
+} // namespace llvm
 
 #endif

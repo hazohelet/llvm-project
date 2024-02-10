@@ -57,6 +57,7 @@ public:
   }
 
   bool addInstSelector() override;
+  void addPreRegAlloc() override;
 };
 } // namespace
 
@@ -73,4 +74,8 @@ MachineFunctionInfo *CPUXTargetMachine::createMachineFunctionInfo(
     BumpPtrAllocator &Allocator, const Function &F,
     const TargetSubtargetInfo *STI) const {
   return CPUXFunctionInfo::create<CPUXFunctionInfo>(Allocator, F, STI);
+}
+
+void CPUXPassConfig::addPreRegAlloc() {
+  addPass(createCPUXMergeBaseOffsetOptPass());
 }

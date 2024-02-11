@@ -17,36 +17,36 @@ def FSW : StoreMemory<0b0000111, 0b010, "fsw", FPR>;
 defm : LoadPattern <load, FLW>;
 defm : StorePattern<store, FSW, FPR>;
 
-def FADD : ArithLogicR<0b1010011, 0b000, 0b0000000, "fadd.s", fadd, FPR>;
-def FSUB : ArithLogicR<0b1010011, 0b000, 0b0000100, "fsub.s", fsub, FPR>;
-def FMUL : ArithLogicR<0b1010011, 0b000, 0b0001000, "fmul.s", fmul, FPR>;
-def FDIV : ArithLogicR<0b1010011, 0b000, 0b0001100, "fdiv.s", fdiv, FPR>;
+def FADD : ArithLogicR<0b1010011, 0b000, 0b0000000, "fadd.s", fadd, FPR, IIFADD>;
+def FSUB : ArithLogicR<0b1010011, 0b000, 0b0000100, "fsub.s", fsub, FPR, IIFSUB>;
+def FMUL : ArithLogicR<0b1010011, 0b000, 0b0001000, "fmul.s", fmul, FPR, IIFMUL>;
+def FDIV : ArithLogicR<0b1010011, 0b000, 0b0001100, "fdiv.s", fdiv, FPR, IIFDIV>;
 
 class FPSingleOp<bits<7> opcode, bits<3> rm, bits<7> funct7,
-                 string instr_asm, RegisterClass DstRC, RegisterClass SrcRC> :
+                 string instr_asm, RegisterClass DstRC, RegisterClass SrcRC, InstrItinClass itin> :
   CPUX_R<opcode, rm, funct7, (outs DstRC:$rd), (ins SrcRC:$rs1),
-         !strconcat(instr_asm, " $rd, $rs1"), [], IIAlu> {
+         !strconcat(instr_asm, " $rd, $rs1"), [], itin> {
   let isReMaterializable = 1;
   let rs2 = 0b00000;
 }
 
 class FPTwoOp<bits<7> opcode, bits<3> rm, bits<7> funct7,
-              string instr_asm>:
+              string instr_asm, InstrItinClass itin>:
   CPUX_R<opcode, rm, funct7, (outs FPR:$rd), (ins FPR:$rs1, FPR:$rs2),
-         !strconcat(instr_asm, " $rd, $rs1, $rs2"), [], IIAlu> {
+         !strconcat(instr_asm, " $rd, $rs1, $rs2"), [], itin> {
   let isReMaterializable = 1;
 }
 
-def FSIGNJ  : FPTwoOp<0b1010011, 0b000, 0b0010000, "fsgnj.s">;
-def FSIGNJN : FPTwoOp<0b1010011, 0b001, 0b0010000, "fsgnjn.s">;
-def FSIGNJX : FPTwoOp<0b1010011, 0b010, 0b0010000, "fsgnjx.s">;
-def FSQRT : FPSingleOp<0b1010011, 0b000, 0b0101100, "fsqrt.s", FPR, FPR>;
-def FHALF : FPSingleOp<0b1010011, 0b000, 0b0101100, "fhalf.s", FPR, FPR>;
-def FFLOOR: FPSingleOp<0b1110111, 0b010, 0b0111100, "ffloor.s", FPR, FPR>;
-def FCVTWS: FPSingleOp<0b1010011, 0b000, 0b1100000, "fcvt.w.s", GPR, FPR>;
-def FCVTSW: FPSingleOp<0b1010011, 0b000, 0b1101000, "fcvt.s.w", FPR, GPR>;
+def FSIGNJ  : FPTwoOp<0b1010011, 0b000, 0b0010000, "fsgnj.s", IIFOTHER>;
+def FSIGNJN : FPTwoOp<0b1010011, 0b001, 0b0010000, "fsgnjn.s", IIFOTHER>;
+def FSIGNJX : FPTwoOp<0b1010011, 0b010, 0b0010000, "fsgnjx.s", IIFOTHER>;
+def FSQRT : FPSingleOp<0b1010011, 0b000, 0b0101100, "fsqrt.s", FPR, FPR, IIFSQRT>;
+def FHALF : FPSingleOp<0b1010011, 0b000, 0b0101100, "fhalf.s", FPR, FPR, IIFHALF>;
+def FFLOOR: FPSingleOp<0b1110111, 0b010, 0b0111100, "ffloor.s", FPR, FPR, IIFOTHER>;
+def FCVTWS: FPSingleOp<0b1010011, 0b000, 0b1100000, "fcvt.w.s", GPR, FPR, IIFCVT>;
+def FCVTSW: FPSingleOp<0b1010011, 0b000, 0b1101000, "fcvt.s.w", FPR, GPR, IIFCVT>;
 
-def FMV_W_X: FPSingleOp<0b1010011, 0b000, 0b1111000, "fmv.w.x",FPR, GPR>;
+// def FMV_W_X: FPSingleOp<0b1010011, 0b000, 0b1111000, "fmv.w.x",FPR, GPR>;
 
 def FLIMM: ArithLogicU<0b0110111, "flimm", FPR, simm20u>;
 

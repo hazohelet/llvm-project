@@ -92,10 +92,10 @@ def addr_fi : ComplexPattern<iPTR, 1, "SelectAddrFI", [frameindex], []>;
 
 class ArithLogicR<bits<7> opcode, bits<3> funct3,
   bits<7> funct7, string instr_asm, SDNode OpNode,
-  RegisterClass RC> : CPUX_R<opcode, funct3, funct7,
+  RegisterClass RC, InstrItinClass itin> : CPUX_R<opcode, funct3, funct7,
     (outs RC:$rd), (ins RC:$rs1, RC:$rs2),
     !strconcat(instr_asm, "  $rd, $rs1, $rs2"),
-    [(set RC:$rd, (OpNode RC:$rs1, RC:$rs2))], IIAlu> {
+    [(set RC:$rd, (OpNode RC:$rs1, RC:$rs2))], itin> {
       let isReMaterializable = 1;
 }
 
@@ -261,21 +261,21 @@ def: InstAlias<"li  $rs, $imm", (ADDI GPR:$rs, ZERO, simm12:$imm)>;
 def: InstAlias<"mv  $rd, $rs", (ADDI GPR:$rd, GPR:$rs, 0)>;
 
 class GPTwoOp<bits<7> opcode, bits<3> rm, bits<7> funct7,
-              string instr_asm>:
+              string instr_asm, InstrItinClass itin>:
   CPUX_R<opcode, rm, funct7, (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
-         !strconcat(instr_asm, " $rd, $rs1, $rs2"), [], IIAlu> {
+         !strconcat(instr_asm, " $rd, $rs1, $rs2"), [], itin> {
   let isReMaterializable = 1;
 }
 
 def LUI: ArithLogicU<0b0110111, "lui", GPR, simm20u>;
-def ADD: ArithLogicR<0b0110011, 0b000, 0b0000000, "add", add, GPR>;
-def ADDSCALE: GPTwoOp<0b1010011, 0b000, 0b0010000, "add.scale">;
-def LWADD: GPTwoOp<0b1010011, 0b000, 0b0010000, "lw.add">;
-def SUB: ArithLogicR<0b0110011, 0b000, 0b0100000, "sub", sub, GPR>;
+def ADD: ArithLogicR<0b0110011, 0b000, 0b0000000, "add", add, GPR, IIAlu>;
+def ADDSCALE: GPTwoOp<0b1010011, 0b000, 0b0010000, "add.scale", IIAlu>;
+def LWADD: GPTwoOp<0b1010011, 0b000, 0b0010000, "lw.add", IILoad>;
+def SUB: ArithLogicR<0b0110011, 0b000, 0b0100000, "sub", sub, GPR, IIAlu>;
 
-def AND: ArithLogicR<0b0110011, 0b111, 0b0000000, "and", and, GPR>;
-def OR : ArithLogicR<0b0110011, 0b110, 0b0000000, "or",  or,  GPR>;
-def XOR: ArithLogicR<0b0110011, 0b100, 0b0000000, "xor", xor, GPR>;
+def AND: ArithLogicR<0b0110011, 0b111, 0b0000000, "and", and, GPR, IIAlu>;
+def OR : ArithLogicR<0b0110011, 0b110, 0b0000000, "or",  or,  GPR, IIAlu>;
+def XOR: ArithLogicR<0b0110011, 0b100, 0b0000000, "xor", xor, GPR, IIAlu>;
 
 def SLL: ShiftR<0b0110011, 0b0000000, 0b001, /*0x0,*/ "sll", shl, GPR>;
 def SRL: ShiftR<0b0110011, 0b0000000, 0b101, /*0x0,*/ "srl", srl, GPR>;

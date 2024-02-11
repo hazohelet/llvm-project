@@ -34,6 +34,8 @@ protected:
   CPUXRegisterInfo RegInfo;
 
 public:
+  bool enablePostRAScheduler() const override;
+  CodeGenOpt::Level getOptLevelToEnablePostRAScheduler() const override;
   bool isPositionIndependent() const;
   const CPUXABIInfo &getABI() const;
 

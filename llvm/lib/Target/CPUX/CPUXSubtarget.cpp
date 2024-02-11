@@ -50,3 +50,9 @@ CPUXSubtarget &CPUXSubtarget::initializeSubtargetDependencies(
 bool CPUXSubtarget::abiUsesSoftFloat() const { return false; }
 
 const CPUXABIInfo &CPUXSubtarget::getABI() const { return TM.getABI(); }
+
+bool CPUXSubtarget::enablePostRAScheduler() const { return true; }
+
+CodeGenOpt::Level CPUXSubtarget::getOptLevelToEnablePostRAScheduler() const {
+  return CodeGenOpt::Aggressive;
+}

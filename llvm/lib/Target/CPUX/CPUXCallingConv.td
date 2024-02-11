@@ -1,7 +1,7 @@
 def CSR_LP32 : CalleeSavedRegs<(add RA, SP, FP, S1,
-                 (sequence "S%u", 2, 11),
+                 (sequence "S%u", 2, 5),
                  F8, F9,
-                 (sequence "F%u", 18, 27))>;
+                 (sequence "F%u", 18, 22))>;
 
 def RetCC_CPUX : CallingConv<[
   CCIfType<[i32], CCAssignToReg<[A0, A1]>>,

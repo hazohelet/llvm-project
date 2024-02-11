@@ -34,6 +34,7 @@ protected:
   CPUXRegisterInfo RegInfo;
 
 public:
+  bool enableMachineScheduler() const override { return true; }
   bool enablePostRAScheduler() const override;
   CodeGenOpt::Level getOptLevelToEnablePostRAScheduler() const override;
   bool isPositionIndependent() const;
